@@ -1,6 +1,6 @@
 import 'package:get/get.dart';
 
-class AuthController extends GetxController {
+class SelesaiController extends GetxController {
   final count = 0.obs;
 
   @override
