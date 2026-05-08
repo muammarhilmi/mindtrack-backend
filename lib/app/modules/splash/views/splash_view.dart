@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import '../../../routes/app_pages.dart';
 import '../../auth/views/auth_view.dart';// ⬅️ penting kalau pakai direct route
 
 class SplashView extends StatefulWidget {
