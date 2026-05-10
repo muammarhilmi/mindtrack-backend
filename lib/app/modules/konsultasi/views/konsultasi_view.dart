@@ -18,13 +18,15 @@ class KonsultasiView extends GetView<KonsultasiController> {
       appBar: AppBar(
         backgroundColor: const Color(0xFF2E66E7),
         elevation: 0,
+        centerTitle: false,
         title: const Text(
           'MindTrack',
           style: TextStyle(
-            fontWeight: FontWeight.bold,
             color: Colors.white,
+            fontWeight: FontWeight.bold,
           ),
         ),
+        leading: const Icon(Icons.spa, color: Colors.white),
       ),
 
       body: Column(
@@ -227,7 +229,7 @@ Widget _buildVoiceBody() {
 
           _bottomButton(
             "Simpan Laporan Hari Ini",
-            () => Get.toNamed('/selesai'),
+            () => Get.toNamed('/hasil'),
           ),
         ],
       ),

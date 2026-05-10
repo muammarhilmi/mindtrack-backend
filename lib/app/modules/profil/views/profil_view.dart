@@ -69,7 +69,28 @@ class ProfilView extends GetView<ProfilController> {
               width: double.infinity,
               height: 50,
               child: OutlinedButton(
-                onPressed: () {},
+                onPressed: () {
+                  Get.defaultDialog(
+                    title: "Konfirmasi",
+                    middleText: "Apakah yakin ingin keluar?",
+                    textCancel: "Tidak",
+                    textConfirm: "Ya",
+                    confirmTextColor: Colors.white,
+                    buttonColor: const Color(0xFF2E66E7),
+
+                    onConfirm: () {
+                      // Tutup dialog
+                      Get.back();
+
+                      // Arahkan ke halaman auth (login/register)
+                      Get.offAllNamed('/auth');
+                    },
+
+                    onCancel: () {
+                      Get.back(); // tutup dialog
+                    },
+                  );
+                },
                 style: OutlinedButton.styleFrom(
                   side: const BorderSide(color: Colors.redAccent),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),

@@ -114,7 +114,7 @@ class SelesaiView extends StatelessWidget {
               height: 50,
               child: ElevatedButton(
                 onPressed: () {
-                  Get.offAllNamed('/beranda');
+                  Get.offAllNamed('/hasil');
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF2E66E7),

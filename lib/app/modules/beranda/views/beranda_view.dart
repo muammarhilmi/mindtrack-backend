@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../controllers/beranda_controller.dart';
-import '../../../controllers/navigation_controller.dart';
 import '../../../widgets/main_bottom_nav.dart';
 
 class BerandaView extends GetView<BerandaController> {
@@ -9,11 +8,6 @@ class BerandaView extends GetView<BerandaController> {
 
   @override
   Widget build(BuildContext context) {
-    // 🔥 SET INDEX SEKALI (AMAN)
-    final navC = Get.find<NavigationController>();
-    if (navC.currentIndex.value != 0) {
-      navC.currentIndex.value = 0;
-    }
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -62,12 +56,16 @@ class BerandaView extends GetView<BerandaController> {
         style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
       ),
       leading: const Icon(Icons.spa, color: Colors.white),
-      actions: const [
+      actions: [
         Padding(
-          padding: EdgeInsets.only(right: 15),
-          child: CircleAvatar(
-            backgroundColor: Colors.white,
-            child: Icon(Icons.person, color: Color(0xFF2E66E7)),
+          padding: const EdgeInsets.only(right: 15),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(50),
+            onTap: () => Get.toNamed('/profil'),
+            child: const CircleAvatar(
+              backgroundColor: Colors.white,
+              child: Icon(Icons.person, color: Color(0xFF2E66E7)),
+            ),
           ),
         )
       ],
