@@ -1,12 +1,15 @@
 import 'package:get/get.dart';
 
 class AuthController extends GetxController {
-  final count = 0.obs;
+  final email = ''.obs;
+  final password = ''.obs;
 
-  @override
-  void onInit() {
-    super.onInit();
+  void login() {
+    print("Email: ${email.value}");
+    print("Password: ${password.value}");
+
+    // TODO: nanti sambung ke API / Firebase
+    // contoh:
+    // Get.offAllNamed(Routes.BERANDA);
   }
-
-  void increment() => count.value++;
 }

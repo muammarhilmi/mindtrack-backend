@@ -12,6 +12,7 @@ abstract class Routes {
   static const KONSULTASI = _Paths.KONSULTASI;
   static const SELESAI = _Paths.SELESAI;
   static const HASIL = _Paths.HASIL;
+  static const REGISTER = _Paths.REGISTER;
 }
 
 abstract class _Paths {
@@ -26,4 +27,5 @@ abstract class _Paths {
   static const KONSULTASI = '/konsultasi';
   static const SELESAI = '/selesai';
   static const HASIL = '/hasil';
+  static const REGISTER = '/register';
 }

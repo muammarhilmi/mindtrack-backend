@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import '../../auth/views/auth_view.dart';// ⬅️ penting kalau pakai direct route
+import '../../../routes/app_pages.dart';
 
 class SplashView extends StatefulWidget {
   const SplashView({super.key});
@@ -15,13 +15,8 @@ class _SplashViewState extends State<SplashView> {
   void initState() {
     super.initState();
 
-    Future.delayed(const Duration(seconds: 3), () {
-
-      // 🔥 PILIH SALAH SATU (RECOMMENDED: pakai ini dulu)
-      Get.offAll(() => const AuthView());
-
-      // ❗ kalau mau pakai route:
-      // Get.offAllNamed(Routes.AUTH);
+    Future.delayed(const Duration(seconds: 5), () {
+      Get.offAllNamed(Routes.AUTH);
     });
   }
 
@@ -161,30 +156,74 @@ class _SplashViewState extends State<SplashView> {
                         );
                       },
                       child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 14),
+                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.6),
-                          borderRadius: BorderRadius.circular(18),
-                        ),
-                        child: const Text(
-                          "Sistem Deteksi Pola Kesehatan Mental Mahasiswa Berbasis Aktivitas Harian",
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 14,
-                            height: 1.6,
-                            color: Colors.black87,
+                          gradient: LinearGradient(
+                            colors: [
+                              Colors.white.withOpacity(0.7),
+                              Colors.white.withOpacity(0.4),
+                            ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: Colors.white.withOpacity(0.3),
                           ),
                         ),
-                      ),
+                        child: RichText(
+                          textAlign: TextAlign.center,
+                          text: const TextSpan(
+                            style: TextStyle(
+                              fontSize: 14,
+                              height: 1.6,
+                              color: Colors.black87,
+                            ),
+                            children: [
+                              TextSpan(text: "Sistem deteksi pola "),
+                              
+                              TextSpan(
+                                text: "kesehatan mental",
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF3A66DB),
+                                ),
+                              ),
+
+                              TextSpan(text: " mahasiswa berbasis "),
+
+                              TextSpan(
+                                text: "aktivitas harian",
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF6C63FF),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      )
                     ),
 
                     const SizedBox(height: 40),
 
-                    /// ⏳ LOADING
-                    const CircularProgressIndicator(
-                      color: Color(0xFF3A66DB),
-                      strokeWidth: 2.5,
+                    TweenAnimationBuilder(
+                      duration: const Duration(milliseconds: 1200),
+                      tween: Tween<double>(begin: 0.3, end: 1),
+                      builder: (context, value, child) {
+                        return Opacity(
+                          opacity: value,
+                          child: child,
+                        );
+                      },
+                      child: const Text(
+                        "Menyiapkan pengalaman terbaik...",
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Colors.grey,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
                     ),
                   ],
                 ),
