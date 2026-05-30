@@ -4,7 +4,6 @@
 Proyek MindTrack telah diperbarui dengan arsitektur baru yang memisahkan antara **Backend** (FastAPI) dan **Frontend** (Flutter).
 
 ## 📂 Struktur Proyek
-```text
 MindTrack/
 ├── backend/    # FastAPI server
 └── frontend/   # Flutter web application
