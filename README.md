@@ -1,7 +1,7 @@
 ```markdown
 # MindTrack Project
 
-Proyek MindTrack telah diperbarui dengan arsitektur baru yang memisahkan antara **Backend** (FastAPI) dan **Frontend** (Flutter).
+Proyek MindTrack telah diperbarui dengan arsitektur baru yang memisahkan antara Backend (FastAPI) dan Frontend (Flutter).
 
 ## 📂 Struktur Proyek
 MindTrack/
