@@ -1,24 +1,26 @@
 class ArticleModel {
 
   final String title;
-  final String abstract;
-  final String author;
-  final String journal;
-  final String year;
-  final int citationCount;
-  final String pdfUrl;
-  final String source;
+
+  final String description;
+
+  final String category;
+
+  final String image;
+
+  final String url;
 
   ArticleModel({
 
     required this.title,
-    required this.abstract,
-    required this.author,
-    required this.journal,
-    required this.year,
-    required this.citationCount,
-    required this.pdfUrl,
-    required this.source,
+
+    required this.description,
+
+    required this.category,
+
+    required this.image,
+
+    required this.url,
   });
 
   factory ArticleModel.fromJson(
@@ -28,32 +30,21 @@ class ArticleModel {
     return ArticleModel(
 
       title:
-          json['title']?.toString() ?? '',
+          json['title'] ?? '',
 
-      abstract:
-          json['abstract']?.toString() ?? '',
+      description:
+          json['description'] ?? '',
 
-      author:
-          json['author']?.toString() ?? '',
+      category:
+          json['category'] ?? '',
 
-      journal:
-          json['journal']?.toString() ?? '',
+      image:
+          json['image'] ??
+          json['image_url'] ??
+          '',
 
-      year:
-          json['year']?.toString() ?? '',
-
-      citationCount:
-          int.tryParse(
-            json['citation_count']
-                .toString(),
-          ) ??
-          0,
-
-      pdfUrl:
-          json['pdf_url']?.toString() ?? '',
-
-      source:
-          json['source']?.toString() ?? '',
+      url:
+          json['url'] ?? '',
     );
   }
 }

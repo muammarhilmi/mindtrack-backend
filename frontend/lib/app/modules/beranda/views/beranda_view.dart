@@ -276,7 +276,7 @@ class BerandaView extends GetView<BerandaController> {
 
                   "Artikel",
 
-                  "Europe PMC",
+                  "Alodokter",
                 ),
               ),
             ],
@@ -572,7 +572,7 @@ Widget _trendTile(
 
         const Text(
 
-          "Artikel Populer",
+          "Artikel Kesehatan Mental",
 
           style: TextStyle(
 
@@ -732,231 +732,198 @@ Widget _trendTile(
   // =====================================================
 
   Widget _articleCard(
-    ArticleModel article,
-  ) {
-    return Container(
+  ArticleModel article,
+) {
+  return Container(
+    margin: const EdgeInsets.only(bottom: 18),
+    decoration: BoxDecoration(
+      color: Get.theme.cardColor,
+      borderRadius: BorderRadius.circular(24),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withOpacity(0.04),
+          blurRadius: 12,
+          offset: const Offset(0, 5),
+        )
+      ],
+    ),
+    child: Column(
+      crossAxisAlignment:
+          CrossAxisAlignment.start,
+      children: [
 
-      margin: const EdgeInsets.only(bottom: 18),
+        // ==========================
+        // IMAGE
+        // ==========================
 
-      padding: const EdgeInsets.all(18),
+        ClipRRect(
+          borderRadius:
+              const BorderRadius.vertical(
+            top: Radius.circular(24),
+          ),
+          child: Image.network(
+            article.image,
+            height: 180,
+            width: double.infinity,
+            fit: BoxFit.cover,
 
-      decoration: BoxDecoration(
+            errorBuilder:
+                (context, error, stackTrace) {
+              return Container(
+                height: 180,
+                color: Colors.grey.shade200,
+                child: const Center(
+                  child: Icon(
+                    Icons.image_not_supported,
+                    size: 40,
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
 
-        color: Get.theme.cardColor,
-
-        borderRadius: BorderRadius.circular(24),
-
-        boxShadow: [
-
-          BoxShadow(
-
-            color: Colors.black.withOpacity(0.04),
-
-            blurRadius: 12,
-
-            offset: const Offset(0, 5),
-          )
-        ],
-      ),
-
-      child: Column(
-
-        crossAxisAlignment:
-            CrossAxisAlignment.start,
-
-        children: [
-
-          Row(
-
+        Padding(
+          padding: const EdgeInsets.all(18),
+          child: Column(
+            crossAxisAlignment:
+                CrossAxisAlignment.start,
             children: [
 
+              // ==========================
+              // CATEGORY
+              // ==========================
+
               Container(
-
-                padding: const EdgeInsets.symmetric(
-
+                padding:
+                    const EdgeInsets.symmetric(
                   horizontal: 10,
-
                   vertical: 5,
                 ),
-
                 decoration: BoxDecoration(
-
                   color: Colors.blue.shade50,
-
                   borderRadius:
                       BorderRadius.circular(10),
                 ),
-
                 child: Text(
-
-                  article.journal,
-
+                  article.category,
                   style: const TextStyle(
-
                     fontSize: 11,
-
                     color: Color(0xFF2E66E7),
-
-                    fontWeight: FontWeight.bold,
+                    fontWeight:
+                        FontWeight.bold,
                   ),
                 ),
               ),
 
-              const Spacer(),
+              const SizedBox(height: 14),
 
-              Icon(
-                Icons.star,
-                color: Colors.orange.shade400,
-                size: 18,
-              ),
-
-              const SizedBox(width: 4),
+              // ==========================
+              // TITLE
+              // ==========================
 
               Text(
-                "${article.citationCount}",
-              )
-            ],
-          ),
-
-          const SizedBox(height: 14),
-
-          Text(
-
-            article.title,
-
-            style: const TextStyle(
-
-              fontWeight: FontWeight.bold,
-
-              fontSize: 17,
-            ),
-          ),
-
-          const SizedBox(height: 10),
-
-          Text(
-
-            article.abstract
-                .replaceAll(RegExp(r'<[^>]*>'), ''),
-
-            maxLines: 4,
-
-            overflow: TextOverflow.ellipsis,
-
-            style: TextStyle(
-
-              fontSize: 13,
-
-              color: Colors.grey.shade700,
-
-              height: 1.6,
-            ),
-          ),
-
-          const SizedBox(height: 16),
-
-          Row(
-
-            mainAxisAlignment:
-                MainAxisAlignment.spaceBetween,
-
-            children: [
-
-              Row(
-
-                children: [
-
-                  Icon(
-                    Icons.calendar_month,
-                    size: 16,
-                    color: Colors.grey.shade600,
-                  ),
-
-                  const SizedBox(width: 5),
-
-                  Text(article.year),
-                ],
+                article.title,
+                style: const TextStyle(
+                  fontWeight:
+                      FontWeight.bold,
+                  fontSize: 17,
+                ),
               ),
 
-              InkWell(
+              const SizedBox(height: 10),
 
-                onTap: () async {
+              // ==========================
+              // DESCRIPTION
+              // ==========================
 
-                  final url = article.pdfUrl;
+              Text(
+                article.description,
+                maxLines: 4,
+                overflow:
+                    TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 13,
+                  color:
+                      Colors.grey.shade700,
+                  height: 1.6,
+                ),
+              ),
 
-                  if (url.isEmpty) {
+              const SizedBox(height: 16),
 
-                    Get.snackbar(
-                      "PDF Tidak Ada",
-                      "Artikel ini tidak memiliki PDF",
+              // ==========================
+              // BUTTON
+              // ==========================
+
+              Align(
+                alignment:
+                    Alignment.centerRight,
+                child: InkWell(
+                  onTap: () async {
+
+                    final Uri uri =
+                        Uri.parse(
+                      article.url,
                     );
 
-                    return;
-                  }
+                    await launchUrl(
+                      uri,
+                      mode: LaunchMode
+                          .externalApplication,
+                    );
+                  },
+                  child: Container(
+                    padding:
+                        const EdgeInsets
+                            .symmetric(
+                      horizontal: 14,
+                      vertical: 10,
+                    ),
+                    decoration:
+                        BoxDecoration(
+                      color: const Color(
+                          0xFF2E66E7),
+                      borderRadius:
+                          BorderRadius
+                              .circular(14),
+                    ),
+                    child: const Row(
+                      mainAxisSize:
+                          MainAxisSize.min,
+                      children: [
 
-                  final Uri uri = Uri.parse(url);
-
-                  await launchUrl(
-                    uri,
-                    mode:
-                        LaunchMode.externalApplication,
-                  );
-                },
-
-                child: Container(
-
-                  padding:
-                      const EdgeInsets.symmetric(
-
-                    horizontal: 14,
-
-                    vertical: 10,
-                  ),
-
-                  decoration: BoxDecoration(
-
-                    color: const Color(0xFF2E66E7),
-
-                    borderRadius:
-                        BorderRadius.circular(14),
-                  ),
-
-                  child: const Row(
-
-                    children: [
-
-                      Icon(
-
-                        Icons.picture_as_pdf,
-
-                        color: Colors.white,
-
-                        size: 18,
-                      ),
-
-                      SizedBox(width: 8),
-
-                      Text(
-
-                        "Baca PDF",
-
-                        style: TextStyle(
-
-                          color: Colors.white,
-
-                          fontWeight: FontWeight.bold,
+                        Icon(
+                          Icons.open_in_new,
+                          color:
+                              Colors.white,
+                          size: 18,
                         ),
-                      )
-                    ],
+
+                        SizedBox(width: 8),
+
+                        Text(
+                          "Baca Artikel",
+                          style: TextStyle(
+                            color:
+                                Colors.white,
+                            fontWeight:
+                                FontWeight
+                                    .bold,
+                          ),
+                        )
+                      ],
+                    ),
                   ),
                 ),
               )
             ],
-          )
-        ],
-      ),
-    );
-  }
+          ),
+        )
+      ],
+    ),
+  );
+}
 
   // =====================================================
   // RELAKSASI
