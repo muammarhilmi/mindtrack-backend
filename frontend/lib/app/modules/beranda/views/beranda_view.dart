@@ -535,8 +535,8 @@ Widget _trendTile(
 
                 "Anxiety",
 
-                controller.burnoutTrend.value,
-                controller.burnoutChange.value,
+                controller.anxietyTrend.value,
+                controller.anxietyChange.value,
                 Colors.red,
               ),
 
@@ -546,8 +546,8 @@ Widget _trendTile(
 
                 "Depression",
 
-                controller.burnoutTrend.value,
-                controller.burnoutChange.value,
+                controller.depressionTrend.value,
+                controller.depressionChange.value,
                 Colors.blue,
               ),
             ],

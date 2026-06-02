@@ -13,6 +13,18 @@ KEYWORDS = [
     "stres"
 ]
 
+MENTAL_KEYWORDS = [
+    "mental",
+    "depresi",
+    "anxiety",
+    "burnout",
+    "stres",
+    "stress",
+    "cemas",
+    "psikolog",
+    "psikologi"
+]
+
 
 def scrape_articles():
 
@@ -46,30 +58,47 @@ def scrape_articles():
 
         for card in cards:
 
+            title = card.get("title")
+            category = card.get("category")
+            description = card.get(
+                "short-description"
+            )
+            image_url = card.get(
+                "image-url"
+            )
+
+            article_url = (
+                BASE_URL +
+                card.get(
+                    "url-path",
+                    ""
+                )
+            )
+
+            # skip data kosong
+            if (
+                not title or
+                not description or
+                not image_url
+            ):
+                continue
+
             articles.append({
 
                 "title":
-                    card.get("title"),
+                    title,
 
                 "category":
-                    card.get("category"),
+                    category or "",
 
                 "description":
-                    card.get(
-                        "short-description"
-                    ),
+                    description,
 
                 "image_url":
-                    card.get(
-                        "image-url"
-                    ),
+                    image_url,
 
                 "url":
-                    BASE_URL +
-                    card.get(
-                        "url-path",
-                        ""
-                    )
+                    article_url
             })
 
     return articles
@@ -81,7 +110,9 @@ def main():
 
     data = scrape_articles()
 
-    # cleaning
+    # =====================
+    # HAPUS DUPLIKAT
+    # =====================
 
     unique = {}
 
@@ -95,34 +126,64 @@ def main():
         unique.values()
     )
 
-    # popularity score
+    # =====================
+    # FILTER MENTAL HEALTH
+    # =====================
+
+    filtered_articles = []
 
     for article in clean_articles:
 
-        article[
-            "popularity_score"
-        ] = (
+        text = (
+            article["title"] + " " +
+            article["description"]
+        ).lower()
 
-            len(
-                article["title"]
+        score = 0
+
+        for keyword in MENTAL_KEYWORDS:
+            score += (
+                text.count(keyword) * 10
             )
 
-            +
+        # hanya simpan artikel yang
+        # benar-benar mengandung
+        # keyword kesehatan mental
+        if score > 0:
 
-            len(
-                article["description"]
-            ) // 20
+            article[
+                "popularity_score"
+            ] = score
 
-        )
+            filtered_articles.append(
+                article
+            )
+
+    # =====================
+    # SORT BERDASARKAN SCORE
+    # =====================
+
+    filtered_articles.sort(
+        key=lambda x: x[
+            "popularity_score"
+        ],
+        reverse=True
+    )
+
+    # =====================
+    # SIMPAN KE MONGODB
+    # =====================
 
     collection.delete_many({})
 
-    collection.insert_many(
-        clean_articles
-    )
+    if filtered_articles:
+
+        collection.insert_many(
+            filtered_articles
+        )
 
     print(
-        "Artikel berhasil diperbarui"
+        f"Artikel berhasil diperbarui ({len(filtered_articles)} data)"
     )
 
 
