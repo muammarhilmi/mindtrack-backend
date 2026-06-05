@@ -43,7 +43,7 @@ pip install -r requirements.txt
 
 4. Jalankan server:
 ```bash
-uvicorn app.main:app --reload --host 127.0.0.1 --port 5000
+uvicorn app.main:app --reload --host 0.0.0.0 --port 5000
 
 ```
 
