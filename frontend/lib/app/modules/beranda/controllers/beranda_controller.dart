@@ -63,6 +63,8 @@ class BerandaController extends GetxController {
 
     isLoadingArticles.value = true;
 
+    print("REQUEST ARTICLES");
+
     final response = await http.get(
 
       Uri.parse(
@@ -70,7 +72,13 @@ class BerandaController extends GetxController {
       ),
     );
 
-    print(response.body);
+    print(
+      "STATUS: ${response.statusCode}"
+    );
+
+    print(
+      "BODY: ${response.body}"
+    );
 
     if (response.statusCode == 200) {
 
@@ -78,21 +86,21 @@ class BerandaController extends GetxController {
           jsonDecode(response.body);
 
       articles.value = data
-
           .map(
             (e) => ArticleModel.fromJson(e),
           )
-
           .toList();
 
       print(
-        "JUMLAH ARTIKEL: ${articles.length}",
+        "JUMLAH ARTIKEL: ${articles.length}"
       );
     }
 
   } catch (e) {
 
-    print("ERROR ARTICLE: $e");
+    print(
+      "ERROR ARTICLE: $e"
+    );
 
   } finally {
 
@@ -143,6 +151,12 @@ class BerandaController extends GetxController {
     isLoadingArticles.value = false;
   }
 }
+
+  final showAllArticles = false.obs;
+
+  void toggleShowAllArticles() {
+    showAllArticles.value = !showAllArticles.value;
+  }
 
   // =====================================================
   // FETCH WEEKLY TREND
