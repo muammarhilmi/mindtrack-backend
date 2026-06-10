@@ -1,19 +1,27 @@
 import 'package:get/get.dart';
 
+import '../modules/affirmation/bindings/affirmation_binding.dart';
+import '../modules/affirmation/views/affirmation_view.dart';
 import '../modules/auth/bindings/auth_binding.dart';
 import '../modules/auth/views/auth_view.dart';
 import '../modules/beranda/bindings/beranda_binding.dart';
 import '../modules/beranda/views/beranda_view.dart';
+import '../modules/breathing/bindings/breathing_binding.dart';
+import '../modules/breathing/views/breathing_view.dart';
 import '../modules/chatbot/bindings/chatbot_binding.dart';
 import '../modules/chatbot/views/chatbot_view.dart';
 import '../modules/hasil/bindings/hasil_binding.dart';
 import '../modules/hasil/views/hasil_view.dart';
+import '../modules/journal/bindings/journal_binding.dart';
+import '../modules/journal/views/journal_view.dart';
 import '../modules/konsultasi/bindings/konsultasi_binding.dart';
 import '../modules/konsultasi/views/konsultasi_view.dart';
 import '../modules/profil/bindings/profil_binding.dart';
 import '../modules/profil/views/profil_view.dart';
 import '../modules/register/bindings/register_binding.dart';
 import '../modules/register/views/register_view.dart';
+import '../modules/relaxation_music/bindings/relaxation_music_binding.dart';
+import '../modules/relaxation_music/views/relaxation_music_view.dart';
 import '../modules/riwayat/bindings/riwayat_binding.dart';
 import '../modules/riwayat/views/riwayat_view.dart';
 import '../modules/selesai/bindings/selesai_binding.dart';
@@ -86,6 +94,26 @@ class AppPages {
       name: _Paths.VERIFICATION,
       page: () => const VerificationView(),
       binding: VerificationBinding(),
+    ),
+    GetPage(
+      name: _Paths.RELAXATION_MUSIC,
+      page: () => const RelaxationMusicView(),
+      binding: RelaxationMusicBinding(),
+    ),
+    GetPage(
+      name: _Paths.JOURNAL,
+      page: () => const JournalView(),
+      binding: JournalBinding(),
+    ),
+    GetPage(
+      name: _Paths.BREATHING,
+      page: () => const BreathingView(),
+      binding: BreathingBinding(),
+    ),
+    GetPage(
+      name: _Paths.AFFIRMATION,
+      page: () => const AffirmationView(),
+      binding: AffirmationBinding(),
     ),
   ];
 }
