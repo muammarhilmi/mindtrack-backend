@@ -14,6 +14,10 @@ abstract class Routes {
   static const HASIL = _Paths.HASIL;
   static const REGISTER = _Paths.REGISTER;
   static const VERIFICATION = _Paths.VERIFICATION;
+  static const RELAXATION_MUSIC = _Paths.RELAXATION_MUSIC;
+  static const JOURNAL = _Paths.JOURNAL;
+  static const BREATHING = _Paths.BREATHING;
+  static const AFFIRMATION = _Paths.AFFIRMATION;
 }
 
 abstract class _Paths {
@@ -30,4 +34,8 @@ abstract class _Paths {
   static const HASIL = '/hasil';
   static const REGISTER = '/register';
   static const VERIFICATION = '/verification';
+  static const RELAXATION_MUSIC = '/relaxation-music';
+  static const JOURNAL = '/journal';
+  static const BREATHING = '/breathing';
+  static const AFFIRMATION = '/affirmation';
 }

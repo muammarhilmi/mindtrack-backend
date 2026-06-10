@@ -14,6 +14,7 @@ class BerandaView extends GetView<BerandaController> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      resizeToAvoidBottomInset: true,
 
       appBar: _buildAppBar(),
 
@@ -564,34 +565,14 @@ Widget _trendTile(
   // =====================================================
 
   Widget _buildArticleHeader() {
-    return Row(
-
-      mainAxisAlignment:
-          MainAxisAlignment.spaceBetween,
-
-      children: [
-
-        const Text(
-
-          "Artikel Kesehatan Mental",
-
-          style: TextStyle(
-
-            fontWeight: FontWeight.bold,
-
-            fontSize: 18,
-          ),
-        ),
-
-        TextButton(
-
-          onPressed: () {},
-
-          child: const Text("Lihat Semua"),
-        )
-      ],
-    );
-  }
+  return const Text(
+    "Artikel Kesehatan Mental",
+    style: TextStyle(
+      fontWeight: FontWeight.bold,
+      fontSize: 18,
+    ),
+  );
+}
 
   // =====================================================
   // SEARCH
@@ -695,44 +676,81 @@ Widget _trendTile(
   // =====================================================
 
   Widget _buildArticleSection(BuildContext context) {
-    return Obx(() {
+  return Obx(() {
+    final data = controller.searchResult.isNotEmpty
+        ? controller.searchResult
+        : controller.articles;
 
-      final data = controller.searchResult.isNotEmpty
+    if (controller.isLoadingArticles.value) {
+      return const Center(
+        child: CircularProgressIndicator(),
+      );
+    }
 
-          ? controller.searchResult
+    if (data.isEmpty) {
+      return const Center(
+        child: Text("Artikel tidak ditemukan"),
+      );
+    }
 
-          : controller.articles;
+    final displayedArticles =
+        controller.showAllArticles.value
+            ? data
+            : data.take(5).toList();
 
-      if (controller.isLoadingArticles.value) {
+    return Column(
+      children: [
 
-        return const Center(
-          child: CircularProgressIndicator(),
-        );
-      }
-
-      if (data.isEmpty) {
-
-        return const Center(
-          child: Text("Artikel tidak ditemukan"),
-        );
-      }
-
-      return Column(
-
-        children: List.generate(
-
-          data.length,
-
+        ...List.generate(
+          displayedArticles.length,
           (index) {
-
-            final article = data[index];
-
+            final article = displayedArticles[index];
             return _articleCard(context, article);
           },
         ),
-      );
-    });
-  }
+
+        if (data.length > 5)
+          Padding(
+            padding: const EdgeInsets.only(top: 10),
+            child: InkWell(
+              onTap: controller.toggleShowAllArticles,
+              borderRadius: BorderRadius.circular(15),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  vertical: 12,
+                  horizontal: 20,
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+
+                    Text(
+                      controller.showAllArticles.value
+                          ? "Tampilkan Lebih Sedikit"
+                          : "Lihat Semua",
+                      style: const TextStyle(
+                        color: Color(0xFF2E66E7),
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+
+                    const SizedBox(width: 6),
+
+                    Icon(
+                      controller.showAllArticles.value
+                          ? Icons.keyboard_arrow_up
+                          : Icons.keyboard_arrow_down,
+                      color: const Color(0xFF2E66E7),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  });
+}
 
   // =====================================================
   // ARTICLE CARD
@@ -942,25 +960,25 @@ Widget _trendTile(
 
   Widget _buildQuickRelaxationGrid() {
     final features = [
-
       {
-        "title": "Meditasi",
-        "icon": Icons.self_improvement
+        "title": "Musik Relaksasi",
+        "icon": Icons.music_note,
+        "route": "/relaxation-music",
       },
-
       {
-        "title": "Musik",
-        "icon": Icons.music_note
+        "title": "Jurnal Harian",
+        "icon": Icons.edit_note,
+        "route": "/journal",
       },
-
-      {
-        "title": "Jurnal",
-        "icon": Icons.edit_note
-      },
-
       {
         "title": "Pernapasan",
-        "icon": Icons.air
+        "icon": Icons.air,
+        "route": "/breathing",
+      },
+      {
+        "title": "Afirmasi",
+        "icon": Icons.favorite,
+        "route": "/affirmation",
       },
     ];
 
@@ -1010,7 +1028,16 @@ Widget _trendTile(
 
             var item = features[index];
 
-            return Container(
+            return InkWell(
+            borderRadius: BorderRadius.circular(20),
+
+            onTap: () {
+              Get.toNamed(
+                item["route"] as String,
+              );
+            },
+
+            child: Container(
 
               decoration: BoxDecoration(
 
@@ -1060,6 +1087,7 @@ Widget _trendTile(
                     ),
                   ),
                 ],
+              ),
               ),
             );
           },
