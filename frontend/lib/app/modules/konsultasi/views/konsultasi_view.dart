@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import '../controllers/konsultasi_controller.dart';
 import '../../../widgets/main_bottom_nav.dart';
 import '../../../controllers/navigation_controller.dart';
+import '../../../data/assessment_data.dart';
 
 class KonsultasiView extends GetView<KonsultasiController> {
   const KonsultasiView({Key? key}) : super(key: key);
@@ -187,54 +188,276 @@ Widget _buildVoiceBody() {
 
   // ================= MANUAL =================
   Widget _buildManualBody() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            "Pelacakan Aktivitas Harian",
-            style: TextStyle(fontWeight: FontWeight.bold),
+  return SingleChildScrollView(
+    padding: const EdgeInsets.all(20),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+
+        // ================= PHQ =================
+
+        const Text(
+          "PHQ Assessment",
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
           ),
+        ),
 
-          const SizedBox(height: 15),
+        const SizedBox(height: 15),
 
-          Obx(() => _buildSlider(
-                "Durasi Tidur (Jam)",
-                controller.tidurDuration.value,
-                (v) => controller.tidurDuration.value = v,
-              )),
+        ...List.generate(
+          phqQuestions.length,
+          (index) {
+            return Obx(() {
+              return _buildQuestionCard(
+                question: phqQuestions[index],
+                value: controller.phqAnswers[index],
+                onChanged: (int? v) {
+                  print("PHQ[$index] = $v");
 
-          const SizedBox(height: 20),
+                  controller.phqAnswers[index] = v;
+                  controller.phqAnswers.refresh();
 
-          const Text(
-            "Kualitas Tidur",
-            style: TextStyle(fontSize: 12, color: Colors.grey),
+                  print(controller.phqAnswers);
+                },
+              );
+            });
+          },
+        ),
+
+        const SizedBox(height: 25),
+
+        // ================= GAD =================
+
+        const Text(
+          "GAD Assessment",
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
           ),
+        ),
 
-          const SizedBox(height: 10),
+        const SizedBox(height: 15),
 
-          _buildMoodPicker(),
+        ...List.generate(
+          gadQuestions.length,
+          (index) {
+            return Obx(() {
+              return _buildQuestionCard(
+                question: gadQuestions[index],
+                value: controller.gadAnswers[index],
+                onChanged: (int? v) {
+                  controller.gadAnswers[index] = v;
+                },
+              );
+            });
+          },
+        ),
 
-          const SizedBox(height: 20),
+        const SizedBox(height: 25),
 
-          const Text(
-            "Beban Kerja",
-            style: TextStyle(fontSize: 12, color: Colors.grey),
+        // ================= STRESS =================
+
+        const Text(
+          "Stress Assessment",
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
           ),
+        ),
 
-          _buildChoiceChip(["Rendah", "Sedang", "Tinggi"]),
+        const SizedBox(height: 15),
 
-          const SizedBox(height: 30),
+        ...List.generate(
+          stressQuestions.length,
+          (index) {
+            return Obx(() {
+              return _buildQuestionCard(
+                question: stressQuestions[index],
+                value: controller.stressAnswers[index],
+                onChanged: (int? v) {
+                  controller.stressAnswers[index] = v;
+                },
+              );
+            });
+          },
+        ),
 
-          _bottomButton(
-            "Simpan Laporan Hari Ini",
-            () => Get.toNamed('/hasil'),
+        const SizedBox(height: 30),
+
+        const Divider(),
+
+        const SizedBox(height: 20),
+
+        // ================= AKTIVITAS HARIAN =================
+
+        const Text(
+          "Aktivitas Harian",
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
           ),
-        ],
-      ),
-    );
-  }
+        ),
+
+        const SizedBox(height: 20),
+
+        // ================= AKTIVITAS 1 =================
+
+        Obx(
+          () => _buildSlider(
+            "Durasi Tidur",
+            controller.sleepHours.value,
+            (v) => controller.sleepHours.value = v,
+          ),
+        ),
+
+        const SizedBox(height: 25),
+
+        // ================= AKTIVITAS 2 =================
+
+        const Text(
+          "Kualitas Tidur",
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+
+        const SizedBox(height: 10),
+
+        _buildChoiceSection(
+          controller.sleepQuality,
+          [
+            "Sangat Buruk",
+            "Buruk",
+            "Cukup",
+            "Baik",
+            "Sangat Baik"
+          ],
+        ),
+
+        const SizedBox(height: 25),
+
+        // ================= AKTIVITAS 3 =================
+
+        const Text(
+          "Aktivitas Fisik Hari Ini",
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+
+        const SizedBox(height: 10),
+
+        _buildChoiceSection(
+          controller.physicalActivity,
+          [
+            "Tidak Ada",
+            "Ringan",
+            "Sedang",
+            "Aktif",
+            "Sangat Aktif"
+          ],
+        ),
+
+        const SizedBox(height: 25),
+
+        // ================= AKTIVITAS 4 =================
+
+        const Text(
+          "Interaksi Sosial Hari Ini",
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+
+        const SizedBox(height: 10),
+
+        _buildChoiceSection(
+          controller.socialInteraction,
+          [
+            "Tidak Ada",
+            "Sedikit",
+            "Cukup",
+            "Banyak",
+            "Sangat Banyak"
+          ],
+        ),
+
+        const SizedBox(height: 25),
+
+        // ================= AKTIVITAS 5 =================
+
+        const Text(
+          "Produktivitas Hari Ini",
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+
+        const SizedBox(height: 10),
+
+        _buildChoiceSection(
+          controller.productivity,
+          [
+            "Sangat Rendah",
+            "Rendah",
+            "Sedang",
+            "Tinggi",
+            "Sangat Tinggi"
+          ],
+        ),
+
+        const SizedBox(height: 30),
+
+        _bottomButton(
+          "Simpan Laporan Hari Ini",
+          () async {
+
+            bool isComplete =
+                !controller.phqAnswers.contains(null) &&
+                !controller.gadAnswers.contains(null) &&
+                !controller.stressAnswers.contains(null) &&
+                controller.sleepQuality.value != null &&
+                controller.physicalActivity.value != null &&
+                controller.socialInteraction.value != null &&
+                controller.productivity.value != null;
+
+            if (!isComplete) {
+              Get.snackbar(
+                "Belum Lengkap",
+                "Mohon isi seluruh assessment terlebih dahulu",
+              );
+              return;
+            }
+
+            try {
+
+              final result =
+                  await controller.submitAssessment();
+
+              print("HASIL DARI API:");
+              print(result);
+              Get.toNamed(
+                '/hasil',
+                arguments: result,
+              );
+
+            } catch (e) {
+
+              Get.snackbar(
+                "Error",
+                e.toString(),
+              );
+            }
+          },
+        ),
+
+        const SizedBox(height: 30),
+      ],
+    ),
+  );
+}
 
   Widget _buildSlider(
       String label, double val, Function(double) onChanged) {
@@ -251,70 +474,125 @@ Widget _buildVoiceBody() {
           value: val,
           min: 0,
           max: 12,
+          divisions: 20,
           activeColor: const Color(0xFF2E66E7),
           onChanged: onChanged,
-        ),
+        )
       ],
     );
   }
 
-  Widget _buildMoodPicker() {
-    List<String> icons = ["😫", "😟", "😐", "😊"];
-
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceAround,
-      children: List.generate(
-        4,
-        (i) => Obx(() => GestureDetector(
-              onTap: () => controller.selectedMood.value = i,
-              child: Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: controller.selectedMood.value == i
-                      ? const Color(0xFF2E66E7).withOpacity(0.1)
-                      : Colors.transparent,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(
-                    color: controller.selectedMood.value == i
-                        ? const Color(0xFF2E66E7)
-                        : Colors.grey.shade200,
-                  ),
-                ),
-                child: Text(
-                  icons[i],
-                  style: const TextStyle(fontSize: 24),
-                ),
-              ),
-            )),
-      ),
-    );
-  }
-
-  Widget _buildChoiceChip(List<String> options) {
-    return Row(
-      children: options
-          .map(
-            (opt) => Obx(
-              () => Padding(
-                padding: const EdgeInsets.only(right: 10),
-                child: ChoiceChip(
-                  label: Text(opt),
-                  selected: controller.bebanKerja.value == opt,
-                  onSelected: (_) =>
-                      controller.bebanKerja.value = opt,
-                  selectedColor: const Color(0xFF2E66E7),
-                  labelStyle: TextStyle(
-                    color: controller.bebanKerja.value == opt
-                        ? Colors.white
-                        : Colors.black,
-                  ),
-                ),
-              ),
+  Widget _buildQuestionCard({
+  required String question,
+  required int? value,
+  required ValueChanged<int?> onChanged,
+}) {
+  return Card(
+    margin: const EdgeInsets.only(bottom: 12),
+    elevation: 1,
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(12),
+    ),
+    child: Padding(
+      padding: const EdgeInsets.all(12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            question,
+            style: const TextStyle(
+              fontWeight: FontWeight.w500,
             ),
-          )
-          .toList(),
-    );
-  }
+          ),
+
+          const SizedBox(height: 10),
+
+          RadioListTile<int>(
+          dense: true,
+          visualDensity: VisualDensity.compact,
+          title: const Text(
+            "Tidak Sama Sekali",
+            style: TextStyle(fontSize: 13),
+          ),
+            value: 0,
+            groupValue: value,
+            onChanged: onChanged,
+          ),
+
+          RadioListTile<int>(
+          dense: true,
+          visualDensity: VisualDensity.compact,
+          title: const Text(
+            "Sedikit",
+            style: TextStyle(fontSize: 13),
+          ),
+            value: 1,
+            groupValue: value,
+            onChanged: onChanged,
+          ),
+
+          RadioListTile<int>(
+          dense: true,
+          visualDensity: VisualDensity.compact,
+          title: const Text(
+            "Cukup Terasa",
+            style: TextStyle(fontSize: 13),
+          ),
+            value: 2,
+            groupValue: value,
+            onChanged: onChanged,
+          ),
+
+          RadioListTile<int>(
+          dense: true,
+          visualDensity: VisualDensity.compact,
+          title: const Text(
+            "Sangat Terasa",
+            style: TextStyle(fontSize: 13),
+          ),
+            value: 3,
+            groupValue: value,
+            onChanged: onChanged,
+          ),
+
+          RadioListTile<int>(
+            dense: true,
+            visualDensity: VisualDensity.compact,
+            title: const Text(
+              "Sangat Berat",
+              style: TextStyle(fontSize: 13),
+            ),
+            value: 4,
+            groupValue: value,
+            onChanged: onChanged,
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+Widget _buildChoiceSection(
+  Rx<int?> selected,
+  List<String> options,
+) {
+  return Obx(
+    () => Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: List.generate(
+        options.length,
+        (index) => ChoiceChip(
+          label: Text(options[index]),
+          selected: selected.value == index,
+          onSelected: (_) {
+            selected.value = index;
+          },
+        ),
+      ),
+    ),
+  );
+}
 
   Widget _bottomButton(String label, VoidCallback onTap) {
     return Padding(
