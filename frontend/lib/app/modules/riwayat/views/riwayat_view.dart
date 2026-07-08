@@ -2,434 +2,369 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../../widgets/main_bottom_nav.dart';
 import '../../../controllers/navigation_controller.dart';
-
 import '../controllers/riwayat_controller.dart';
 
 class RiwayatView extends GetView<RiwayatController> {
   const RiwayatView({super.key});
 
+  // 🎨 Definisikan palet warna premium di sini agar konsisten di semua widget
+  static const Color colorBlue = Color(0xFF2E66E7);
+  static const Color colorEmerald = Color(0xFF10B981); // Hijau meditatif
+  static const Color colorCoral = Color(0xFFF43F5E);   // Merah lembut/soft coral
+  static const Color colorOrange = Color(0xFFF59E0B);  // Oranye hangat
+
   @override
   Widget build(BuildContext context) {
     Get.find<NavigationController>().currentIndex.value = 3;
     return Scaffold(
-      backgroundColor:
-          Theme.of(context).scaffoldBackgroundColor,
-
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         elevation: 0,
-        backgroundColor: const Color(0xFF2E66E7),
+        backgroundColor: colorBlue,
         title: const Text(
           "Riwayat Assessment",
           style: TextStyle(
             color: Colors.white,
             fontWeight: FontWeight.bold,
+            fontSize: 18,
           ),
         ),
         centerTitle: true,
       ),
-
       body: Obx(() {
-
         if (controller.isLoading.value) {
           return const Center(
-            child: CircularProgressIndicator(),
-          );
-        }
-
-        if (controller.histories.isEmpty) {
-          return Center(
-            child: Column(
-              mainAxisAlignment:
-                  MainAxisAlignment.center,
-              children: const [
-
-                Icon(
-                  Icons.history,
-                  size: 80,
-                  color: Colors.grey,
-                ),
-
-                SizedBox(height: 15),
-
-                Text(
-                  "Belum Ada Riwayat Assessment",
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight:
-                        FontWeight.bold,
-                  ),
-                ),
-
-                SizedBox(height: 5),
-
-                Text(
-                  "Lakukan assessment terlebih dahulu",
-                  style: TextStyle(
-                    color: Colors.grey,
-                  ),
-                ),
-              ],
+            child: CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation<Color>(colorBlue),
             ),
           );
         }
 
-        return Padding(
+        if (controller.histories.isEmpty) {
+          return _buildEmptyState();
+        }
+
+        return ListView(
           padding: const EdgeInsets.all(20),
-          child: Column(
-            children: [
-
-              // =====================
-              // HEADER CARD
-              // =====================
-
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).brightness == Brightness.dark 
-                      ? Theme.of(context).cardColor 
-                      : const Color(0xFFEAF4FF),
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    if (Theme.of(context).brightness == Brightness.dark)
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.2),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
-                      ),
-                  ],
+          children: [
+            _buildDevelopmentCard(),
+            const SizedBox(height: 25),
+            Row(
+              children: [
+                Container(
+                  width: 4,
+                  height: 16,
+                  decoration: BoxDecoration(
+                    color: colorBlue,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-
-                    Row(
-                      children: const [
-                        Icon(
-                          Icons.trending_up,
-                          color: Color(0xFF2E66E7),
-                        ),
-                        SizedBox(width: 8),
-                        Text(
-                          "Perkembangan Mental",
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-
-                    const SizedBox(height: 15),
-
-                    Obx(() {
-
-                      if (controller.histories.length < 2) {
-                        return const Text(
-                          "Belum cukup data untuk melihat perkembangan.",
-                          style: TextStyle(fontSize: 14),
-                        );
-                      }
-
-                      final latest =
-                          controller.histories[0]["final_score"];
-
-                      final previous =
-                          controller.histories[1]["final_score"];
-
-                      final diff = latest - previous;
-
-                      return Column(
-                        crossAxisAlignment:
-                            CrossAxisAlignment.start,
-                        children: [
-
-                          Text(
-                            diff >= 0
-                                ? "+$diff poin dibanding assessment sebelumnya"
-                                : "$diff poin dibanding assessment sebelumnya",
-                            style: TextStyle(
-                              fontSize: 22,
-                              fontWeight: FontWeight.bold,
-                              color: diff >= 0
-                                  ? Colors.green
-                                  : Colors.red,
-                            ),
-                          ),
-
-                          const SizedBox(height: 8),
-
-                          Text(
-                            diff > 0
-                                ? "Status: Meningkat 📈"
-                                : diff < 0
-                                    ? "Status: Menurun 📉"
-                                    : "Status: Stabil ➖",
-                            style: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
-                      );
-                    }),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 25),
-
-              Align(
-                alignment:
-                    Alignment.centerLeft,
-                child: Text(
+                const SizedBox(width: 8),
+                Text(
                   "RIWAYAT TERBARU",
                   style: TextStyle(
                     color: Colors.grey[600],
-                    fontWeight:
-                        FontWeight.bold,
-                    letterSpacing: 1,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.8,
                     fontSize: 12,
                   ),
                 ),
-              ),
-
-              const SizedBox(height: 15),
-
-              Expanded(
-                child: ListView.builder(
-                  itemCount:
-                      controller.histories.length,
-
-                  itemBuilder:
-                      (context, index) {
-
-                    final item =
-                        controller
-                            .histories[index];
-
-                    final score =
-                        item["final_score"] ??
-                            0;
-
-                    final level =
-                        item["level"] ??
-                            "-";
-
-                    Color statusColor;
-
-                    if (score >= 80) {
-                      statusColor =
-                          Colors.green;
-                    } else if (score >=
-                        60) {
-                      statusColor =
-                          Colors.blue;
-                    } else if (score >=
-                        40) {
-                      statusColor =
-                          Colors.orange;
-                    } else {
-                      statusColor =
-                          Colors.red;
-                    }
-
-                    return InkWell(
-                      borderRadius:
-                          BorderRadius
-                              .circular(
-                        20,
-                      ),
-
-                      onTap: () {
-
-                        Get.toNamed(
-                          '/hasil',
-                          arguments: item,
-                        );
-
-                      },
-
-                      child: Container(
-                        margin:
-                            const EdgeInsets
-                                .only(
-                          bottom: 15,
-                        ),
-
-                        padding:
-                            const EdgeInsets
-                                .all(
-                          18,
-                        ),
-
-                        decoration:
-                            BoxDecoration(
-                          color:
-                              Theme.of(
-                                      context)
-                                  .cardColor,
-
-                          borderRadius:
-                              BorderRadius
-                                  .circular(
-                            20,
-                          ),
-
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors
-                                  .black
-                                  .withOpacity(
-                                      0.05),
-
-                              blurRadius:
-                                  12,
-
-                              offset:
-                                  const Offset(
-                                      0, 4),
-                            ),
-                          ],
-                        ),
-
-                        child: Row(
-                          children: [
-
-                            // SCORE
-
-                            Container(
-                              width: 65,
-                              height: 65,
-
-                              decoration:
-                                  BoxDecoration(
-                                shape:
-                                    BoxShape
-                                        .circle,
-
-                                color: statusColor
-                                    .withOpacity(
-                                        0.12),
-                              ),
-
-                              child: Center(
-                                child: Text(
-                                  "$score",
-
-                                  style:
-                                      TextStyle(
-                                    fontSize:
-                                        22,
-
-                                    fontWeight:
-                                        FontWeight
-                                            .bold,
-
-                                    color:
-                                        statusColor,
-                                  ),
-                                ),
-                              ),
-                            ),
-
-                            const SizedBox(
-                                width: 16),
-
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment:
-                                    CrossAxisAlignment
-                                        .start,
-
-                                children: [
-
-                                  Text(
-                                    level,
-
-                                    style:
-                                        TextStyle(
-                                      fontSize:
-                                          18,
-
-                                      fontWeight:
-                                          FontWeight
-                                              .bold,
-
-                                      color:
-                                          statusColor,
-                                    ),
-                                  ),
-
-                                  const SizedBox(
-                                      height:
-                                          5),
-
-                                  const Text(
-                                    "Assessment Kesehatan Mental",
-                                  ),
-
-                                  const SizedBox(
-                                      height:
-                                          8),
-
-                                  Row(
-                                    children: [
-
-                                      const Icon(
-                                        Icons
-                                            .calendar_today,
-                                        size:
-                                            14,
-                                        color:
-                                            Colors.grey,
-                                      ),
-
-                                      const SizedBox(
-                                          width:
-                                              5),
-
-                                      Text(
-                                        item["created_at"]
-                                            .toString()
-                                            .substring(
-                                                0,
-                                                10),
-
-                                        style:
-                                            const TextStyle(
-                                          color:
-                                              Colors.grey,
-
-                                          fontSize:
-                                              12,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ),
-
-                            const Icon(
-                              Icons
-                                  .arrow_forward_ios,
-                              size: 18,
-                              color:
-                                  Colors.grey,
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ],
-          ),
+              ],
+            ),
+            const SizedBox(height: 15),
+            ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: controller.histories.length,
+              itemBuilder: (context, index) {
+                return _buildHistoryItem(controller.histories[index], context);
+              },
+            ),
+          ],
         );
       }),
       bottomNavigationBar: const MainBottomNav(),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 40),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade100,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.history_toggle_off_rounded,
+                size: 70,
+                color: Colors.grey.shade400,
+              ),
+            ),
+            const SizedBox(height: 20),
+            const Text(
+              "Belum Ada Riwayat Assessment",
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF1E293B),
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              "Kondisi mentalmu penting dipantau. Yuk, lakukan assessment pertamamu sekarang!",
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Colors.grey.shade500,
+                fontSize: 13,
+                height: 1.4,
+              ),
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              onPressed: () => Get.toNamed('/assessment-form'),
+              icon: const Icon(Icons.assignment_turned_in_rounded, size: 18),
+              label: const Text("Mulai Assessment"),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: colorBlue,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(50),
+                ),
+                elevation: 2,
+              ),
+            )
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDevelopmentCard() {
+    if (controller.histories.length < 2) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.grey.shade500.withOpacity(0.08),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Colors.grey.shade200),
+        ),
+        child: const Text(
+          "Belum cukup data untuk menganalisis perkembangan mentalmu saat ini.",
+          style: TextStyle(fontSize: 13, color: Colors.grey, height: 1.4),
+        ),
+      );
+    }
+
+    final latest = controller.histories[0]["final_score"] ?? 0;
+    final previous = controller.histories[1]["final_score"] ?? 0;
+    final diff = latest - previous;
+
+    Color badgeColor;
+    String statusText;
+    IconData statusIcon;
+
+    if (diff > 0) {
+      badgeColor = colorEmerald;
+      statusText = "Meningkat";
+      statusIcon = Icons.trending_up_rounded;
+    } else if (diff < 0) {
+      badgeColor = colorCoral; // Diturunkan ke variabel lokal
+      statusText = "Menurun";
+      statusIcon = Icons.trending_down_rounded;
+    } else {
+      badgeColor = colorOrange;
+      statusText = "Stabil";
+      statusIcon = Icons.trending_flat_rounded;
+    }
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(22),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [const Color(0xFFEAF4FF), const Color(0xFFF1F7FF).withOpacity(0.6)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: const Color(0xFFD4E7FE), width: 1),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                "Perkembangan Mental",
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF1E3A8A),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  color: badgeColor.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(30),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(statusIcon, color: badgeColor, size: 14),
+                    const SizedBox(width: 4),
+                    Text(
+                      statusText,
+                      style: TextStyle(
+                        color: badgeColor,
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            diff >= 0 ? "+$diff Poin" : "$diff Poin",
+            style: TextStyle(
+              fontSize: 28,
+              fontWeight: FontWeight.w900,
+              color: diff >= 0 ? colorEmerald : colorCoral, // 🔥 SINKRON: Sekarang otomatis pakai coral jika minus
+              letterSpacing: -0.5,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            "Perbandingan dari hasil skor tes pengujian sebelumnya",
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.blueGrey.shade600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHistoryItem(Map<String, dynamic> item, BuildContext context) {
+    final score = item["final_score"] ?? 0;
+    final level = item["level"] ?? "-";
+    
+    final rawDate = item["created_at"]?.toString() ?? "";
+    final dateString = rawDate.contains(' ') ? rawDate.split(' ')[0] : (rawDate.length >= 10 ? rawDate.substring(0, 10) : "Baru saja");
+
+    // 🔥 SINKRON: Pilihan warna item list mengacu pada hex static yang sama
+    Color statusColor;
+    if (score >= 80) {
+      statusColor = colorEmerald;
+    } else if (score >= 60) {
+      statusColor = colorBlue;
+    } else if (score >= 40) {
+      statusColor = colorOrange;
+    } else {
+      statusColor = colorCoral; // Menggunakan coral untuk konsistensi level bawah
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 14),
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+        border: Border.all(color: Colors.grey.withOpacity(0.08)),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(20),
+          onTap: () => Get.toNamed('/hasil', arguments: item),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Container(
+                  width: 58,
+                  height: 58,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: statusColor.withOpacity(0.08),
+                    border: Border.all(color: statusColor.withOpacity(0.2), width: 1),
+                  ),
+                  child: Center(
+                    child: Text(
+                      "$score",
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: statusColor,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        level,
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: statusColor,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        "Assessment Kesehatan Mental",
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.grey.shade700,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Icon(Icons.calendar_today_rounded, size: 12, color: Colors.grey.shade400),
+                          const SizedBox(width: 5),
+                          Text(
+                            dateString,
+                            style: TextStyle(color: Colors.grey.shade500, fontSize: 11),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(
+                  Icons.arrow_forward_ios_rounded,
+                  size: 14,
+                  color: Colors.grey.shade400,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

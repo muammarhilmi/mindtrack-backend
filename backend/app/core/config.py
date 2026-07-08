@@ -4,7 +4,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 
-    MONGO_URI: str = "mongodb://mindtrack:mindtrack123@ac-bjnf81q-shard-00-00.68pvtdq.mongodb.net:27017,ac-bjnf81q-shard-00-01.68pvtdq.mongodb.net:27017,ac-bjnf81q-shard-00-02.68pvtdq.mongodb.net:27017/mindtrack?ssl=true&authSource=admin&replicaSet=atlas-1xmhte-shard-0&appName=Cluster0"
+    MONGO_URI: str = ""
     MONGODB_DATABASE: str = "mindtrack"
     APP_TITLE: str = "MindTrack API"
     APP_VERSION: str = "1.0.0"
@@ -24,7 +24,7 @@ class Settings(BaseSettings):
     SMTP_PASSWORD: str = ""
     
     # URL backend untuk reset password
-    APP_URL: str = "https://swan-compactor-revenge.ngrok-free.dev"
+    APP_URL: str = "http://192.168.23.151:5000"
 
     # Groq settings
     GROQ_API_KEY: str = ""
