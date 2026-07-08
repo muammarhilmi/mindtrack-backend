@@ -91,6 +91,10 @@ var chartFilterIndex = 0.obs;      // 0: Semua, 1: 7 Terakhir
         Uri.parse(
           '${NetworkConfig.baseUrl}/articles',
         ),
+        headers: {
+          'Content-Type': 'application/json',
+          'ngrok-skip-browser-warning': 'true',
+        },
       );
 
       if (response.statusCode == 200) {
@@ -120,6 +124,10 @@ var chartFilterIndex = 0.obs;      // 0: Semua, 1: 7 Terakhir
         Uri.parse(
           '${NetworkConfig.baseUrl}/search-realtime/$keyword',
         ),
+        headers: {
+          'Content-Type': 'application/json',
+          'ngrok-skip-browser-warning': 'true',
+        },
       );
 
       if (response.statusCode == 200) {
@@ -154,7 +162,11 @@ var chartFilterIndex = 0.obs;      // 0: Semua, 1: 7 Terakhir
       isLoadingTrend.value = true;
 
       final response = await http.get(
-        Uri.parse('${NetworkConfig.baseUrl}/weekly-trend'),
+      Uri.parse('${NetworkConfig.baseUrl}/weekly-trend'),
+      headers: {
+        'Content-Type': 'application/json',
+        'ngrok-skip-browser-warning': 'true',
+      },
       );
 
       if (response.statusCode == 200) {

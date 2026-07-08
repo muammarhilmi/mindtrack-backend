@@ -243,7 +243,7 @@ class _BreathingViewState extends State<BreathingView>
         children: [
           // --- BACKGROUND GRADIENT CINEMATIC ---
           Container(
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
                   Color(0xFF0F172A), // Midnight Slate

@@ -13,6 +13,8 @@ class GlobalAuthController extends GetxController {
 
   Rxn<UserModel> currentUser = Rxn<UserModel>();
   RxBool isDarkMode = false.obs;
+  // Email sementara setelah register (sebelum verifikasi)
+  String? pendingEmail;
 
   bool get isLoggedIn => currentUser.value != null;
 
@@ -61,7 +63,10 @@ class GlobalAuthController extends GetxController {
       gender: gender,
       tanggalLahir: tanggalLahir,
     );
-    // Auto login setelah register agar token terisi (mirip dengan Firebase)
+    // Simpan email untuk halaman verifikasi jika gagal login
+    pendingEmail = email.toLowerCase();
+    
+    // Auto login setelah register (karena issue timeout SMTP sudah di-fix di backend)
     await login(email: email, password: password);
   }
 
@@ -73,21 +78,35 @@ class GlobalAuthController extends GetxController {
     await _provider.forgotPassword(email);
   }
 
+  Future<void> registerFace(String imageBase64) async {
+    await _provider.registerFace(imageBase64);
+  }
+
+  Future<void> loginWithFace(String imageBase64) async {
+    await _provider.loginWithFace(imageBase64);
+    if (NetworkConfig.token != null) {
+      await _storage.write(key: 'jwt_token', value: NetworkConfig.token);
+      await getCurrentUser();
+    }
+  }
+
   Future<void> loginWithGoogle() async {
     try {
       await GoogleSignInService.init();
       final idToken = await GoogleSignInService.signInAndGetIdToken();
-      
+
       if (idToken == null) {
-        throw Exception('Login Google dibatalkan');
+        throw Exception('Login Google dibatalkan atau gagal mendapatkan token');
       }
 
+      print("Mengirim idToken ke backend...");
       await _provider.loginWithGoogleBackend(idToken);
       if (NetworkConfig.token != null) {
         await _storage.write(key: 'jwt_token', value: NetworkConfig.token);
         await getCurrentUser();
       }
     } catch (e) {
+      print("loginWithGoogle ERROR: $e");
       rethrow;
     }
   }

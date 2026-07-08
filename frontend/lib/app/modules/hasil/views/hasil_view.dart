@@ -70,7 +70,6 @@ class _HasilBodyState extends State<_HasilBody> {
         child: Column(
           children: [
             const Spacer(flex: 2),
-
             // Lingkaran skor — dibesarkan
             TweenAnimationBuilder<double>(
               tween: Tween(begin: 0, end: controller.finalScore.value / 100),
@@ -118,7 +117,6 @@ class _HasilBodyState extends State<_HasilBody> {
             ),
 
             const SizedBox(height: 22),
-
             // Label level
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
@@ -139,7 +137,6 @@ class _HasilBodyState extends State<_HasilBody> {
             ),
 
             const SizedBox(height: 20),
-
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 32),
               child: Column(
@@ -169,7 +166,6 @@ class _HasilBodyState extends State<_HasilBody> {
             ),
 
             const Spacer(flex: 3),
-
             // Panah ke bawah untuk membuka detail
             InkWell(
               borderRadius: BorderRadius.circular(30),

@@ -108,6 +108,7 @@ class _AffirmationViewState extends State<AffirmationView>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+
       body: GestureDetector(
         onTap: next,
         behavior: HitTestBehavior.opaque, // Memastikan ketukan di area kosong tetap memicu fungsi next
@@ -180,7 +181,6 @@ class _AffirmationViewState extends State<AffirmationView>
                 ),
               ),
             ),
-
             // --- BREATHING FOOTER HINT ---
             Positioned(
               bottom: 50,

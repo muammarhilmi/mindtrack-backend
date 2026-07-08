@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../../widgets/main_bottom_nav.dart';
+import '../../../controllers/navigation_controller.dart';
 import '../controllers/riwayat_controller.dart';
 
 class RiwayatView extends GetView<RiwayatController> {
@@ -14,6 +15,7 @@ class RiwayatView extends GetView<RiwayatController> {
 
   @override
   Widget build(BuildContext context) {
+    Get.find<NavigationController>().currentIndex.value = 3;
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
