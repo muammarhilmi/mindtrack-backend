@@ -32,112 +32,78 @@ class FaceRegisterView extends GetView<FaceRegisterController> {
 
           return Stack(
             children: [
-              if (!controller.isCaptured.value)
-                CameraPreview(controller.cameraController.value!)
-              else
-                Image.memory(
-                  base64Decode(controller.capturedImageBase64.value),
-                  fit: BoxFit.cover,
-                  width: double.infinity,
-                  height: double.infinity,
-                ),
-
-              Container(
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      Colors.transparent,
-                      Colors.black54,
-                    ],
-                    stops: [0.7, 1.0],
-                  ),
-                ),
-              ),
-
-              Positioned(
-                top: 16,
-                left: 16,
-                child: IconButton(
-                  icon: const Icon(Icons.arrow_back, color: Colors.white),
-                  onPressed: () => Get.back(),
-                ),
-              ),
-
-              Positioned(
-                top: 16,
-                right: 16,
-                child: TextButton(
-                  onPressed: () => controller.skip(),
-                  child: const Text(
-                    'Lewati',
-                    style: TextStyle(color: Colors.white70, fontSize: 14),
-                  ),
-                ),
-              ),
-
-              Positioned(
-                top: 100,
-                left: 0,
-                right: 0,
-                child: Column(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 24,
-                        vertical: 12,
-                      ),
-                      decoration: BoxDecoration(
-                        color: controller.statusColor.value.withOpacity(0.9),
-                        borderRadius: BorderRadius.circular(24),
-                      ),
-                      child: Text(
-                        controller.statusText.value,
-                        style: TextStyle(
-                          color: controller.statusColor.value ==
-                                  const Color(0xFFFFF176)
-                              ? Colors.black87
-                              : Colors.white,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
+              Column(
+                children: [
+                  Container(
+                    color: Colors.black,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    child: Row(
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.arrow_back, color: Colors.white),
+                          onPressed: () => Get.back(),
                         ),
-                      ),
+                        Expanded(
+                          child: Text(
+                            controller.isCaptured.value
+                                ? 'Wajah terdeteksi!'
+                                : 'arahkan wajah ke kamera',
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 48),
+                      ],
                     ),
-                  ],
-                ),
-              ),
+                  ),
 
-              Positioned(
-                bottom: 60,
-                left: 0,
-                right: 0,
-                child: Column(
-                  children: [
-                    Text(
-                      'Daftarkan Wajah Anda',
-                      style: TextStyle(
-                        color: Colors.white.withOpacity(0.8),
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
+                  Expanded(
+                    child: controller.isCaptured.value
+                        ? Image.memory(
+                            base64Decode(controller.capturedImageBase64.value),
+                            fit: BoxFit.cover,
+                            width: double.infinity,
+                            height: double.infinity,
+                          )
+                        : CameraPreview(controller.cameraController.value!),
+                  ),
+
+                  Container(
+                    color: Colors.black,
+                    padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Text(
+                          'Daftarkan Wajah Anda',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        const Text(
+                          'Arahkan wajah ke kamera dan pastikan pencahayaan cukup',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: Colors.white60,
+                            fontSize: 13,
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        if (!controller.isCaptured.value)
+                          _captureButton()
+                        else
+                          _actionButtons(),
+                      ],
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Arahkan wajah ke kamera dan pastikan pencahayaan cukup',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: Colors.white.withOpacity(0.5),
-                        fontSize: 12,
-                      ),
-                    ),
-                    const SizedBox(height: 30),
-                    if (!controller.isCaptured.value)
-                      _captureButton()
-                    else
-                      _actionButtons(),
-                  ],
-                ),
+                  ),
+                ],
               ),
 
               if (controller.isLoading.value)

@@ -1,5 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
+import 'dart:ui' as ui;
 
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
@@ -53,6 +55,22 @@ class FaceRegisterController extends GetxController {
     }
   }
 
+  Future<Uint8List> _flipImageHorizontally(Uint8List bytes) async {
+    final codec = await ui.instantiateImageCodec(bytes);
+    final frame = await codec.getNextFrame();
+    final image = frame.image;
+
+    final recorder = ui.PictureRecorder();
+    final canvas = Canvas(recorder);
+    canvas.scale(-1, 1);
+    canvas.drawImage(image, Offset(-image.width.toDouble(), 0), Paint());
+
+    final picture = recorder.endRecording();
+    final flippedImage = await picture.toImage(image.width, image.height);
+    final byteData = await flippedImage.toByteData(format: ui.ImageByteFormat.png);
+    return byteData!.buffer.asUint8List();
+  }
+
   Future<void> capture() async {
     if (cameraController.value == null || !isCameraInitialized.value) return;
 
@@ -64,7 +82,8 @@ class FaceRegisterController extends GetxController {
       final XFile photo = await cameraController.value!.takePicture();
       final File file = File(photo.path);
       final List<int> imageBytes = await file.readAsBytes();
-      final String base64Image = base64Encode(imageBytes);
+      final Uint8List flippedBytes = await _flipImageHorizontally(Uint8List.fromList(imageBytes));
+      final String base64Image = base64Encode(flippedBytes);
 
       capturedImageBase64.value = base64Image;
       isCaptured.value = true;
