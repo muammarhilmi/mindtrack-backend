@@ -30,91 +30,77 @@ class FaceLoginView extends GetView<FaceLoginController> {
 
           return Stack(
             children: [
-              CameraPreview(controller.cameraController.value!),
-
-              Container(
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [Colors.transparent, Colors.black54],
-                    stops: [0.6, 1.0],
-                  ),
-                ),
-              ),
-
-              Positioned(
-                top: 16,
-                left: 16,
-                child: IconButton(
-                  icon: const Icon(Icons.arrow_back, color: Colors.white),
-                  onPressed: () => controller.cancel(),
-                ),
-              ),
-
-              Positioned(
-                top: 100,
-                left: 0,
-                right: 0,
-                child: Column(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 24,
-                        vertical: 12,
-                      ),
-                      decoration: BoxDecoration(
-                        color: controller.statusColor.value.withOpacity(0.9),
-                        borderRadius: BorderRadius.circular(24),
-                      ),
-                      child: Text(
-                        controller.statusText.value,
-                        style: TextStyle(
-                          color: controller.statusColor.value ==
-                                  const Color(0xFFFFF176)
-                              ? Colors.black87
-                              : Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
+              Column(
+                children: [
+                  Container(
+                    color: Colors.black,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    child: Row(
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.arrow_back, color: Colors.white),
+                          onPressed: () => controller.cancel(),
                         ),
-                      ),
+                        Expanded(
+                          child: Center(
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 6,
+                              ),
+                              decoration: BoxDecoration(
+                                color: controller.statusColor.value.withOpacity(0.85),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Text(
+                                controller.statusText.value,
+                                style: TextStyle(
+                                  color: controller.statusColor.value ==
+                                          const Color(0xFFFFF176)
+                                      ? Colors.black87
+                                      : Colors.white,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 48),
+                      ],
                     ),
-                  ],
-                ),
-              ),
+                  ),
 
-              Positioned(
-                bottom: 60,
-                left: 0,
-                right: 0,
-                child: Column(
-                  children: [
-                    Text(
-                      'Face Login',
-                      style: TextStyle(
-                        color: Colors.white.withOpacity(0.8),
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
-                      ),
+                  Expanded(
+                    child: CameraPreview(controller.cameraController.value!),
+                  ),
+
+                  Container(
+                    color: Colors.black,
+                    padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+                    child: const Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'Face Login',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        SizedBox(height: 4),
+                        Text(
+                          'Arahkan wajah ke kamera untuk login',
+                          style: TextStyle(
+                            color: Colors.white60,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Arahkan wajah ke kamera untuk login',
-                      style: TextStyle(
-                        color: Colors.white.withOpacity(0.5),
-                        fontSize: 14,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Tekan ESC/Kembali untuk keluar',
-                      style: TextStyle(
-                        color: Colors.white.withOpacity(0.3),
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
 
               if (controller.isLoading.value)
