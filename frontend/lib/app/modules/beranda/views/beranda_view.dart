@@ -44,10 +44,6 @@ class BerandaView extends GetView<BerandaController> {
               const SizedBox(height: 20),
 
               _buildSummaryCard(),
-
-              const SizedBox(height: 25),
-              
-              _buildMentalProgressChart(),
               const SizedBox(height: 25),
 
               _buildWeeklyTrend(context),
@@ -152,548 +148,362 @@ class BerandaView extends GetView<BerandaController> {
   // SUMMARY
   // =====================================================
 
-  Widget _buildSummaryCard() {
-    return Container(
-
-      padding: const EdgeInsets.all(18),
-
-      decoration: BoxDecoration(
-
-        gradient: const LinearGradient(
-
-          colors: [
-
-            Color(0xFF2E66E7),
-
-            Color(0xFF4B8DFF),
-          ],
-        ),
-
-        borderRadius: BorderRadius.circular(24),
-      ),
-
-      child: Column(
-
-        children: [
-
-          Row(
-
-            mainAxisAlignment:
-                MainAxisAlignment.spaceBetween,
-
-            children: [
-
-              const Text(
-
-                'Ringkasan Hari Ini',
-
-                style: TextStyle(
-
-                  color: Colors.white,
-
-                  fontWeight: FontWeight.bold,
-
-                  fontSize: 16,
-                ),
-              ),
-
-              Container(
-
-                padding: const EdgeInsets.symmetric(
-
-                  horizontal: 10,
-
-                  vertical: 5,
-                ),
-
-                decoration: BoxDecoration(
-
-                  color: Colors.white.withOpacity(0.2),
-
-                  borderRadius: BorderRadius.circular(10),
-                ),
-
-                child: const Text(
-
-                  'Mental Health',
-
-                  style: TextStyle(
-
-                    color: Colors.white,
-
-                    fontSize: 11,
-                  ),
-                ),
-              )
-            ],
-          ),
-
-          const SizedBox(height: 20),
-
-          Row(
-
-            children: [
-
-              Expanded(
-
-                child: _summaryBox(
-
-                  Icons.auto_graph,
-
-                  "Weekly Trend",
-
-                  "Realtime",
-                ),
-              ),
-
-              const SizedBox(width: 12),
-
-              Expanded(
-
-                child: _summaryBox(
-
-                  Icons.article,
-
-                  "Artikel",
-
-                  "Alodokter",
-                ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 18),
-
-          Obx(() => LinearProgressIndicator(
-
-                value: controller.weeklyProgress.value,
-
-                backgroundColor: Colors.white24,
-
-                color: Colors.white,
-
-                minHeight: 8,
-              )),
-        ],
-      ),
-    );
-  }
-
-  Widget _summaryBox(
-    IconData icon,
-    String title,
-    String value,
-  ) {
-    return Container(
-
-      padding: const EdgeInsets.all(14),
-
-      decoration: BoxDecoration(
-
-        color: Colors.white.withOpacity(0.15),
-
-        borderRadius: BorderRadius.circular(18),
-      ),
-
-      child: Column(
-
-        crossAxisAlignment: CrossAxisAlignment.start,
-
-        children: [
-
-          Icon(
-            icon,
-            color: Colors.white,
-          ),
-
-          const SizedBox(height: 12),
-
-          Text(
-
-            title,
-
-            style: const TextStyle(
-
-              color: Colors.white70,
-
-              fontSize: 12,
-            ),
-          ),
-
-          const SizedBox(height: 4),
-
-          Text(
-
-            value,
-
-            style: const TextStyle(
-
-              color: Colors.white,
-
-              fontWeight: FontWeight.bold,
-
-              fontSize: 16,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-Widget _buildMentalProgressChart() {
-
+Widget _buildSummaryCard() {
   return Obx(() {
-
+    // 1. State Loading
     if (controller.isLoadingMentalChart.value) {
-      return const Center(
-        child: CircularProgressIndicator(),
+      return Container(
+        height: 250,
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFF2E66E7), Color(0xFF4B8DFF)],
+          ),
+          borderRadius: BorderRadius.circular(24),
+        ),
+        child: const Center(
+          child: CircularProgressIndicator(color: Colors.white),
+        ),
       );
     }
 
+    // 2. State Data Kosong
     if (controller.mentalHistory.isEmpty) {
-      return const SizedBox();
+      return Container(
+        padding: const EdgeInsets.all(30),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 12,
+              offset: const Offset(0, 5),
+            ),
+          ],
+        ),
+        child: const Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.show_chart_rounded, size: 55, color: Colors.grey),
+              SizedBox(height: 12),
+              Text(
+                "Belum ada riwayat assessment",
+                style: TextStyle(
+                  fontSize: 15,
+                  color: Colors.grey,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
     }
 
-    final histories = controller.mentalHistory;
+    // 3. Pemrosesan Data & Fitur Filter Dasbor
+    var histories = List<Map<String, dynamic>>.from(controller.mentalHistory);
+    histories.sort(
+      (a, b) => DateTime.parse(a["created_at"]).compareTo(DateTime.parse(b["created_at"])),
+    );
 
-    final latestScore =
-        histories.first["final_score"] ?? 0;
+    // Jalankan filter berdasarkan pilihan user di dashboard
+    if (controller.chartFilterIndex.value == 1 && histories.length > 7) {
+      histories = histories.sublist(histories.length - 7);
+    }
 
-    final oldestScore =
-        histories.last["final_score"] ?? 0;
+    // Logika menentukan data aktif (jika disentuh lihat data titik tersebut, jika tidak tampilkan data terakhir)
+    final int activeIndex = controller.selectedChartIndex.value != -1 
+        && controller.selectedChartIndex.value < histories.length
+        ? controller.selectedChartIndex.value 
+        : histories.length - 1;
 
-    final diff =
-        latestScore - oldestScore;
+    final activeItem = histories[activeIndex];
+    final activeScore = (activeItem["final_score"] ?? 0).toDouble();
+    final activeDate = DateTime.parse(activeItem["created_at"]);
 
-    final chartColor =
-        diff >= 0
-            ? Colors.green
-            : Colors.red;
+    // Hitung perubahan (diff) khusus untuk data terakhir saja
+    final latestScore = (histories.last["final_score"] ?? 0).toDouble();
+    double previousScore = latestScore;
+    if (histories.length >= 2) {
+      previousScore = (histories[histories.length - 2]["final_score"] ?? 0).toDouble();
+    }
+    final diff = latestScore - previousScore;
+    
+    String statusLabel = "Stabil";
+    String diffText = "";
+    Color statusColor = Colors.white;
+    IconData statusIcon = Icons.trending_flat_rounded;
 
+    if (diff > 0) {
+      statusLabel = "Meningkat";
+      diffText = "+${diff.toStringAsFixed(0)}";
+      statusColor = Colors.greenAccent; 
+      statusIcon = Icons.trending_up_rounded;
+    } else if (diff < 0) {
+      statusLabel = "Menurun";
+      diffText = diff.toStringAsFixed(0); 
+      statusColor = const Color(0xFFFF8A8A); 
+      statusIcon = Icons.trending_down_rounded;
+    }
+
+    double xInterval = 1;
+    if (histories.length > 5) {
+      xInterval = (histories.length / 5).ceilToDouble();
+    }
+
+    // 4. Main UI Card
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius:
-            BorderRadius.circular(20),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF1E4AD9), Color(0xFF4B8DFF)],
+        ),
+        borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color:
-                Colors.black.withOpacity(0.05),
-            blurRadius: 10,
+            color: const Color(0xFF2E66E7).withOpacity(0.3),
+            blurRadius: 15,
+            offset: const Offset(0, 8),
           ),
         ],
       ),
       child: Column(
-        crossAxisAlignment:
-            CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-
-          const Row(
-            children: [
-              Icon(
-                Icons.show_chart,
-                color: Color(0xFF2E66E7),
-              ),
-              SizedBox(width: 8),
-              Text(
-                "Perkembangan Mental",
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight:
-                      FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 20),
-
+          // HEADER DASHBOARD: Judul + Filter Tab
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-
-              Expanded(
-                child: Container(
-                  padding:
-                      const EdgeInsets.all(14),
-                  decoration:
-                      BoxDecoration(
-                    color: const Color(
-                            0xFF2E66E7)
-                        .withOpacity(0.08),
-                    borderRadius:
-                        BorderRadius.circular(
-                            15),
+              const Row(
+                children: [
+                  Icon(Icons.analytics_rounded, color: Colors.white, size: 22),
+                  SizedBox(width: 8),
+                  Text(
+                    'Tren Mental',
+                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
                   ),
-                  child: Column(
-                    children: [
-
-                      const Text(
-                        "Score Terakhir",
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey,
-                        ),
-                      ),
-
-                      const SizedBox(
-                          height: 5),
-
-                      Text(
-                        "$latestScore",
-                        style:
-                            const TextStyle(
-                          fontSize: 24,
-                          fontWeight:
-                              FontWeight.bold,
-                          color: Color(
-                              0xFF2E66E7),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+                ],
               ),
-
-              const SizedBox(width: 12),
-
-              Expanded(
-                child: Container(
-                  padding:
-                      const EdgeInsets.all(14),
-                  decoration:
-                      BoxDecoration(
-                    color: chartColor
-                        .withOpacity(0.08),
-                    borderRadius:
-                        BorderRadius.circular(
-                            15),
-                  ),
-                  child: Column(
-                    children: [
-
-                      const Text(
-                        "Perubahan",
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey,
-                        ),
-                      ),
-
-                      const SizedBox(
-                          height: 5),
-
-                      Text(
-                        diff >= 0
-                            ? "+$diff"
-                            : "$diff",
-                        style:
-                            TextStyle(
-                          fontSize: 24,
-                          fontWeight:
-                              FontWeight.bold,
-                          color:
-                              chartColor,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
+              // Filter Chips (Interaktif)
+              Row(
+                children: [
+                  _buildFilterChip("Semua", 0),
+                  const SizedBox(width: 6),
+                  _buildFilterChip("7 Terakhir", 1),
+                ],
+              )
             ],
           ),
+          
+          const SizedBox(height: 12),
+          
+          // Status Badge
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.white.withOpacity(0.3), width: 1),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(statusIcon, color: statusColor, size: 16),
+                const SizedBox(width: 4),
+                Text(
+                  "$statusLabel Berdasarkan Data Terakhir",
+                  style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w500),
+                ),
+                if (diff != 0) ...[
+                  const SizedBox(width: 4),
+                  Text(diffText, style: TextStyle(color: statusColor, fontSize: 13, fontWeight: FontWeight.bold)),
+                ],
+              ],
+            ),
+          ),
+          
+          const SizedBox(height: 24),
 
-          const SizedBox(height: 25),
-
+          // Area Grafik Garis
           SizedBox(
-            height: 250,
+            height: 180, 
             child: LineChart(
-
+              duration: const Duration(milliseconds: 250),
+              curve: Curves.easeOutCubic,
               LineChartData(
-
+                minX: -0.2, 
+                maxX: (histories.length - 1).toDouble() + 0.2, 
                 minY: 0,
-                maxY: 100,
-
-                borderData:
-                    FlBorderData(
-                  show: false,
-                ),
-
-                gridData:
-                    FlGridData(
-                  show: true,
-                ),
-
-                lineTouchData:
-                    LineTouchData(
-
-                  touchTooltipData:
-                      LineTouchTooltipData(
-
-                    getTooltipItems:
-                        (spots) {
-
-                      return spots
-                          .map(
-                            (spot) =>
-                                LineTooltipItem(
-                              "Score ${spot.y.toInt()}",
-                              const TextStyle(
-                                color:
-                                    Colors.white,
-                                fontWeight:
-                                    FontWeight
-                                        .bold,
-                              ),
-                            ),
-                          )
-                          .toList();
+                maxY: 110, // Ditinggikan agar ayunan curve skor 100 aman
+                clipData: const FlClipData.none(), 
+                
+                // INTERAKSI SENTUHAN (Touch Callback)
+                lineTouchData: LineTouchData(
+                  handleBuiltInTouches: true,
+                  touchCallback: (FlTouchEvent event, LineTouchResponse? touchResponse) {
+                    // Jika pengguna melepas sentuhan, kembalikan ke data terakhir (-1)
+                    if (!event.isInterestedForInteractions || touchResponse == null || touchResponse.lineBarSpots == null) {
+                      controller.selectedChartIndex.value = -1;
+                      return;
+                    }
+                    // Ambil indeks X dari titik yang sedang ditekan/ditunjuk jari
+                    final touchedIndex = touchResponse.lineBarSpots!.first.x.toInt();
+                    if (touchedIndex >= 0 && touchedIndex < histories.length) {
+                      controller.selectedChartIndex.value = touchedIndex;
+                    }
+                  },
+                  touchTooltipData: LineTouchTooltipData(
+                    getTooltipColor: (spot) => Colors.white,
+                    fitInsideHorizontally: true,
+                    fitInsideVertically: true,
+                    getTooltipItems: (spots) {
+                      return spots.map((spot) {
+                        final date = DateTime.parse(histories[spot.x.toInt()]["created_at"]);
+                        return LineTooltipItem(
+                          "${date.day}/${date.month}\nSkor: ${spot.y.toInt()}",
+                          const TextStyle(color: Color(0xFF1E4AD9), fontWeight: FontWeight.bold, fontSize: 12),
+                        );
+                      }).toList();
                     },
                   ),
                 ),
-
-                titlesData:
-                    FlTitlesData(
-
-                  topTitles:
-                      const AxisTitles(),
-
-                  rightTitles:
-                      const AxisTitles(),
-
-                  leftTitles:
-                      AxisTitles(
-
-                    sideTitles:
-                        SideTitles(
-
+                
+                gridData: FlGridData(
+                  show: true,
+                  drawVerticalLine: false,
+                  horizontalInterval: 25,
+                  getDrawingHorizontalLine: (value) {
+                    return FlLine(color: Colors.white.withOpacity(0.15), strokeWidth: 1);
+                  },
+                ),
+                borderData: FlBorderData(
+                  show: true,
+                  border: Border(bottom: BorderSide(color: Colors.white.withOpacity(0.3), width: 1)),
+                ),
+                titlesData: FlTitlesData(
+                  topTitles: const AxisTitles(),
+                  rightTitles: const AxisTitles(),
+                  leftTitles: AxisTitles(
+                    sideTitles: SideTitles(
                       showTitles: true,
-
-                      interval: 20,
-
-                      reservedSize: 35,
-
-                      getTitlesWidget:
-                          (value,
-                              meta) {
-
+                      reservedSize: 28,
+                      interval: 25,
+                      getTitlesWidget: (value, meta) {
+                        if (value > 100) return const SizedBox(); // Sembunyikan angka label 110
                         return Text(
-                          value
-                              .toInt()
-                              .toString(),
-                          style:
-                              const TextStyle(
-                            fontSize: 10,
-                          ),
+                          value.toInt().toString(),
+                          style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 10),
                         );
                       },
                     ),
                   ),
-
-                  bottomTitles:
-                      AxisTitles(
-
-                    sideTitles:
-                        SideTitles(
-
+                  bottomTitles: AxisTitles(
+                    sideTitles: SideTitles(
                       showTitles: true,
+                      interval: xInterval, 
+                      reservedSize: 26,
+                      getTitlesWidget: (value, meta) {
+                        final index = value.toInt();
+                        if (index < 0 || index >= histories.length) return const SizedBox();
+                        if (value != value.toInt()) return const SizedBox();
 
-                      interval: 1,
-
-                      getTitlesWidget:
-                          (value,
-                              meta) {
-
-                        final index =
-                            value.toInt();
-
-                        if (index <
-                                0 ||
-                            index >=
-                                histories.length) {
-                          return const SizedBox();
-                        }
-
-                        final date =
-                            DateTime.parse(
-                          histories[index]
-                              ["created_at"],
-                        );
-
+                        final date = DateTime.parse(histories[index]["created_at"]);
                         return Padding(
-                          padding:
-                              const EdgeInsets.only(
-                                  top: 8),
+                          padding: const EdgeInsets.only(top: 8),
                           child: Text(
                             "${date.day}/${date.month}",
-                            style:
-                                const TextStyle(
-                              fontSize: 10,
-                            ),
+                            style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 10),
                           ),
                         );
                       },
                     ),
                   ),
                 ),
-
                 lineBarsData: [
-
                   LineChartBarData(
-
                     isCurved: true,
-
-                    color:
-                        chartColor,
-
+                    curveSmoothness: .3,
+                    color: Colors.white, 
                     barWidth: 4,
-
-                    dotData:
-                        FlDotData(
+                    isStrokeCapRound: true,
+                    preventCurveOverShooting: true,
+                    spots: List.generate(histories.length, (index) {
+                      return FlSpot(index.toDouble(), (histories[index]["final_score"] ?? 0).toDouble());
+                    }),
+                    dotData: FlDotData(
                       show: true,
-                    ),
-
-                    belowBarData:
-                        BarAreaData(
-                      show: true,
-                      color: chartColor
-                          .withOpacity(
-                              0.15),
-                    ),
-
-                    spots:
-                        List.generate(
-
-                      histories.length,
-
-                      (index) {
-
-                        final item =
-                            histories[
-                                index];
-
-                        return FlSpot(
-                          index
-                              .toDouble(),
-                          (item["final_score"] ??
-                                  0)
-                              .toDouble(),
+                      getDotPainter: (spot, percent, bar, index) {
+                        // Perbesar ukuran titik jika sedang dipilih/disentuh user
+                        final isSelected = index == activeIndex && controller.selectedChartIndex.value != -1;
+                        return FlDotCirclePainter(
+                          radius: isSelected ? 6 : 3.5,
+                          color: isSelected ? Colors.amber : const Color(0xFF1E4AD9),
+                          strokeWidth: isSelected ? 3 : 2.5,
+                          strokeColor: Colors.white,
                         );
                       },
+                    ),
+                    belowBarData: BarAreaData(
+                      show: true,
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [Colors.white.withOpacity(0.25), Colors.white.withOpacity(0.00)],
+                      ),
                     ),
                   ),
                 ],
               ),
             ),
           ),
-
-          const SizedBox(height: 10),
-
-          Text(
-            "${histories.length} assessment tercatat",
-            style: const TextStyle(
-              color: Colors.grey,
-              fontSize: 12,
+          
+          const SizedBox(height: 16),
+          
+          // BOTTOM PANEL: Menampilkan informasi dinamis berdasarkan titik yang disentuh
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+            decoration: BoxDecoration(
+              color: controller.selectedChartIndex.value != -1 
+                  ? Colors.white.withOpacity(0.12) 
+                  : Colors.transparent,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      controller.selectedChartIndex.value != -1 ? "Skor Data Terpilih" : "Skor Asesmen Terakhir",
+                      style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 11),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      "${activeScore.toStringAsFixed(0)} Poin",
+                      style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      "Waktu Asesmen",
+                      style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 11),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      "${activeDate.day}/${activeDate.month}/${activeDate.year}",
+                      style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
         ],
@@ -702,6 +512,31 @@ Widget _buildMentalProgressChart() {
   });
 }
 
+// Helper widget untuk membuat tombol filter yang rapi di dalam card
+Widget _buildFilterChip(String label, int index) {
+  final isSelected = controller.chartFilterIndex.value == index;
+  return GestureDetector(
+    onTap: () {
+      controller.chartFilterIndex.value = index;
+      controller.selectedChartIndex.value = -1; // Reset seleksi saat filter diganti
+    },
+    child: Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: isSelected ? Colors.white : Colors.white.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: isSelected ? const Color(0xFF1E4AD9) : Colors.white.withOpacity(0.8),
+          fontSize: 10,
+          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+        ),
+      ),
+    ),
+  );
+}
 
 Widget _trendTile(
 
@@ -805,93 +640,129 @@ Widget _trendTile(
   // WEEKLY TREND
   // =====================================================
 
-  Widget _buildWeeklyTrend(BuildContext context) {
+ Widget _buildWeeklyTrend(BuildContext context) {
+  // Variabel internal untuk mengatur state tile yang sedang terbuka/aktif
+  final RxString expandedTrend = ''.obs;
+  final RxString showChartFor = ''.obs; 
 
   return Obx(() {
-
+    // 1. KONDISI LOADING: Tetap terjaga di paling atas
     if (controller.isLoadingTrend.value) {
-
       return const Center(
-        child: CircularProgressIndicator(),
+        child: Padding(
+          padding: EdgeInsets.all(40.0), // Sedikit dinaikkan agar lebih lega saat loading
+          child: CircularProgressIndicator(),
+        ),
       );
     }
 
+    final isDark = Get.find<GlobalAuthController>().isDarkMode.value;
+    final cardColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
+    const primaryBlue = Color(0xFF2E66E7);
+
     return Column(
-
-      crossAxisAlignment:
-          CrossAxisAlignment.start,
-
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-
-        const Text(
-
-          'Weekly Trend',
-
-          style: TextStyle(
-
-            fontWeight: FontWeight.bold,
-
-            fontSize: 16,
-          ),
+        
+        // --- HEADER SEKSYEN: SEKARANG SUDAH SERAGAM KELAS PREMIUM ---
+        // Ganti bagian Row header di dalam _buildWeeklyTrend() dengan ini:
+        Row(
+          children: [
+            // Garis aksen vertikal minimalis
+            Container(
+              width: 4,
+              height: 24,
+              decoration: BoxDecoration(
+                color: primaryBlue,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    "Tren Pencarian Mingguan",
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                      letterSpacing: 0.2,
+                      color: isDark ? Colors.white : Colors.black87,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    "Topik yang paling banyak dicari oleh pengguna minggu ini",
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: isDark ? Colors.white54 : Colors.black54,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
-
         const SizedBox(height: 15),
 
+        // --- WADAH KARTU UTAMA TREN ---
         Container(
-
-          padding: const EdgeInsets.all(18),
-
+          padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-
-            color: Get.find<GlobalAuthController>().isDarkMode.value ? const Color(0xFF1E1E1E) : Colors.white,
-
-            borderRadius:
-                BorderRadius.circular(20),
-
+            color: cardColor,
+            borderRadius: BorderRadius.circular(20),
             boxShadow: [
-
               BoxShadow(
-
-                color:
-                    Colors.black.withOpacity(0.04),
-
+                color: Colors.black.withOpacity(isDark ? 0.2 : 0.04),
                 blurRadius: 10,
-
                 offset: const Offset(0, 5),
               )
             ],
           ),
-
           child: Column(
-
             children: [
-
-              _trendTile(
-                "Burnout",
-                controller.burnoutTrend.value,
-                controller.burnoutChange.value,
-                Colors.orange,
+              // Item 1: Burnout
+              _buildInteractiveTrendTile(
+                title: "Burnout",
+                currentTrend: controller.burnoutTrend.value,
+                change: controller.burnoutChange.value,
+                color: Colors.orange,
+                expandedTrend: expandedTrend,
+                showChartFor: showChartFor, 
+                isDark: isDark,
               ),
-              const SizedBox(height: 14),
-
-              _trendTile(
-
-                "Anxiety",
-
-                controller.anxietyTrend.value,
-                controller.anxietyChange.value,
-                Colors.red,
+              Divider(
+                height: 16, 
+                thickness: 1, 
+                color: isDark ? Colors.white10 : Colors.grey.shade100,
               ),
-
-              const SizedBox(height: 14),
-
-              _trendTile(
-
-                "Depression",
-
-                controller.depressionTrend.value,
-                controller.depressionChange.value,
-                Colors.blue,
+              
+              // Item 2: Anxiety
+              _buildInteractiveTrendTile(
+                title: "Anxiety",
+                currentTrend: controller.anxietyTrend.value,
+                change: controller.anxietyChange.value,
+                color: Colors.redAccent,
+                expandedTrend: expandedTrend,
+                showChartFor: showChartFor, 
+                isDark: isDark,
+              ),
+              Divider(
+                height: 16, 
+                thickness: 1, 
+                color: isDark ? Colors.white10 : Colors.grey.shade100,
+              ),
+              
+              // Item 3: Depression
+              _buildInteractiveTrendTile(
+                title: "Depression",
+                currentTrend: controller.depressionTrend.value,
+                change: controller.depressionChange.value,
+                color: Colors.blueAccent,
+                expandedTrend: expandedTrend,
+                showChartFor: showChartFor, 
+                isDark: isDark,
               ),
             ],
           ),
@@ -900,191 +771,608 @@ Widget _trendTile(
     );
   });
 }
+Widget _buildInteractiveTrendTile({
+  required String title,
+  required dynamic currentTrend,
+  required dynamic change,
+  required Color color,
+  required RxString expandedTrend,
+  required RxString showChartFor, // <--- Diterima di sini
+  required bool isDark,
+}) {
+  final double trendValue = double.tryParse(currentTrend.toString()) ?? 0.0;
+  final double changeValue = double.tryParse(change.toString()) ?? 0.0;
+  
+  final bool isUp = changeValue > 0;
+  final bool isNeutral = changeValue == 0;
+  
+  String insightText = "";
+  if (isUp) {
+    insightText = "Volume pencarian $title minggu ini meningkat tajam di internet. Waspadai tren kelelahan mental di sekitarmu.";
+  } else if (changeValue < 0) {
+    insightText = "Volume pencarian $title menurun. Tren menunjukkan perbaikan kondisi secara umum minggu ini.";
+  } else {
+    insightText = "Tren pencarian stabil, tidak ada lonjakan signifikan minggu ini.";
+  }
 
-  // =====================================================
-  // HEADER ARTIKEL
-  // =====================================================
+  return Obx(() {
+    final isExpanded = expandedTrend.value == title;
+    final isChartVisible = showChartFor.value == title; // Status apakah grafik terbuka inline
 
-  Widget _buildArticleHeader() {
-  return const Text(
-    "Artikel Kesehatan Mental",
-    style: TextStyle(
-      fontWeight: FontWeight.bold,
-      fontSize: 18,
-    ),
-  );
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: () {
+          if (isExpanded) {
+            expandedTrend.value = '';
+            showChartFor.value = ''; // Ikut tutup grafiknya jika tile ditutup
+          } else {
+            expandedTrend.value = title;
+          }
+        },
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 250),
+          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            color: isExpanded 
+                ? (isDark ? Colors.white.withOpacity(0.05) : color.withOpacity(0.05)) 
+                : Colors.transparent,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // --- HEADER KARTU ---
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        width: 12,
+                        height: 12,
+                        decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+                      ),
+                      const SizedBox(width: 10),
+                      Text(
+                        title,
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 15,
+                          color: isDark ? Colors.white : Colors.black87,
+                        ),
+                      ),
+                    ],
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: isNeutral
+                          ? Colors.grey.withOpacity(0.2)
+                          : isUp
+                              ? Colors.red.withOpacity(0.15)
+                              : Colors.green.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          isNeutral ? Icons.trending_flat : (isUp ? Icons.trending_up : Icons.trending_down),
+                          size: 14,
+                          color: isNeutral ? Colors.grey : (isUp ? Colors.red : Colors.green),
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          "${changeValue > 0 ? '+' : ''}${changeValue.toStringAsFixed(1)}%",
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: isNeutral ? Colors.grey : (isUp ? Colors.red : Colors.green),
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                ],
+              ),
+              
+              const SizedBox(height: 12),
+              
+              // --- VISUAL BAR (0 - 100) ---
+              Row(
+                children: [
+                  Expanded(
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(10),
+                      child: LinearProgressIndicator(
+                        value: trendValue / 100,
+                        minHeight: 6,
+                        backgroundColor: isDark ? Colors.white12 : Colors.grey.shade200,
+                        valueColor: AlwaysStoppedAnimation<Color>(color),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    "${trendValue.toInt()}/100",
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: isDark ? Colors.white70 : Colors.black54,
+                    ),
+                  ),
+                ],
+              ),
+
+              // --- AREA INSIGHT & GRAFIK INLINE (Expandable) ---
+              AnimatedSize(
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeInOut,
+                child: isExpanded
+                    ? Padding(
+                        padding: const EdgeInsets.only(top: 16, bottom: 4, left: 4, right: 4),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              insightText,
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: isDark ? Colors.white70 : Colors.black54,
+                                height: 1.4,
+                                fontStyle: FontStyle.italic,
+                              ),
+                            ),
+                            const SizedBox(height: 14),
+                            
+                            // TOMBOL TOGGLE TAMPILKAN GRAFIK
+                            SizedBox(
+                              width: double.infinity,
+                              child: ElevatedButton.icon(
+                                onPressed: () {
+                                  if (isChartVisible) {
+                                    showChartFor.value = '';
+                                  } else {
+                                    showChartFor.value = title;
+                                    controller.trendRangeFilter.value = 7; // Reset filter ke 7 hari setiap dibuka
+                                  }
+                                },
+                                icon: Icon(isChartVisible ? Icons.keyboard_arrow_up_rounded : Icons.show_chart_rounded, size: 16),
+                                label: Text(
+                                  isChartVisible ? "Sembunyikan Grafik" : "Lihat Detail Grafik",
+                                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                                ),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: color,
+                                  foregroundColor: Colors.white,
+                                  elevation: 0,
+                                  padding: const EdgeInsets.symmetric(vertical: 10),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                ),
+                              ),
+                            ),
+
+                            // --- GRAFIK & FILTER DI BAWAH TOMBOL ---
+                            if (isChartVisible) ...[
+                              const SizedBox(height: 16),
+                              // Filter Hari Mini
+                              // --- GANTI AREA WRAP CHOICECHIP LAMA DENGAN KODE SLEEK INI ---
+                              Center(
+                                child: Container(
+                                  padding: const EdgeInsets.all(4), // Jarak dalam wadah kapsul
+                                  decoration: BoxDecoration(
+                                    // Latar belakang menyatu untuk semua tombol
+                                    color: isDark ? Colors.white.withOpacity(0.06) : Colors.grey.shade100,
+                                    borderRadius: BorderRadius.circular(14),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min, // Agar lebar wadah pas dengan konten
+                                    children: [7, 30, 90].map((days) {
+                                      final isSelected = controller.trendRangeFilter.value == days;
+                                      
+                                      return GestureDetector(
+                                        onTap: () => controller.trendRangeFilter.value = days,
+                                        child: AnimatedContainer(
+                                          duration: const Duration(milliseconds: 220),
+                                          curve: Curves.easeInOut,
+                                          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+                                          decoration: BoxDecoration(
+                                            // Tombol aktif mengambil warna kategori, tombol tidak aktif transparan
+                                            color: isSelected ? color : Colors.transparent,
+                                            borderRadius: BorderRadius.circular(10),
+                                            
+                                            // Efek bayangan bersinar halus (glow effect) hanya untuk yang aktif
+                                            boxShadow: isSelected
+                                                ? [
+                                                    BoxShadow(
+                                                      color: color.withOpacity(0.35),
+                                                      blurRadius: 10,
+                                                      offset: const Offset(0, 4),
+                                                    )
+                                                  ]
+                                                : [],
+                                          ),
+                                          child: Text(
+                                            "$days Hari",
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.bold,
+                                              // Warna teks kontras otomatis berubah secara realtime
+                                              color: isSelected
+                                                  ? Colors.white
+                                                  : (isDark ? Colors.white60 : Colors.black54),
+                                            ),
+                                          ),
+                                        ),
+                                      );
+                                    }).toList(),
+                                  ),
+                                ),
+                              ),
+// -------------------------------------------------------------,
+                              const SizedBox(height: 16),
+                              
+                              // Kotak Wadah Grafik LineChart (Beri tinggi solid)
+                              // --- GANTI KOTAK WADAH GRAFIK LAMA DENGAN INI ---
+                              SizedBox(
+                                height: 180, // Sedikit dinaikkan agar angka sumbu bawah tidak terpotong
+                                child: () {
+                                  final chartPoints = controller.getTrendData(title, controller.trendRangeFilter.value);
+                                  
+                                  if (chartPoints.isEmpty) {
+                                    return const Center(
+                                      child: Text(
+                                        "Data historis kosong di database",
+                                        style: TextStyle(fontSize: 12, color: Colors.grey),
+                                      ),
+                                    );
+                                  }
+
+                                  return LineChart(
+                                    LineChartData(
+                                      minY: 0,
+                                      maxY: 100,
+                                      
+                                      // 1. FITUR INTERAKTIF: Memunculkan Angka Saat Titik Grafik Disentuh (Tooltip)
+                                      lineTouchData: LineTouchData(
+                                        handleBuiltInTouches: true,
+                                        // Ganti bagian ini:
+                                          touchTooltipData: LineTouchTooltipData(
+                                            getTooltipColor: (touchedSpot) => color.withOpacity(0.9),
+                                            // HAPUS BARIS INI: tooltipRoundedRadius: 8,
+                                            tooltipPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                            getTooltipItems: (List<LineBarSpot> touchedBarSpots) {
+                                            return touchedBarSpots.map((barSpot) {
+                                              return LineTooltipItem(
+                                                "Skor: ${barSpot.y.toInt()}",
+                                                const TextStyle(
+                                                  color: Colors.white,
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 12,
+                                                ),
+                                              );
+                                            }).toList();
+                                          },
+                                        ),
+                                        // Efek lingkaran membesar saat indikator disentuh
+                                        getTouchedSpotIndicator: (LineChartBarData barData, List<int> spotIndexes) {
+                                          return spotIndexes.map((spotIndex) {
+                                            return TouchedSpotIndicatorData(
+                                              FlLine(color: color.withOpacity(0.3), strokeWidth: 3),
+                                              FlDotData(
+                                                getDotPainter: (spot, percent, barData, index) {
+                                                  return FlDotCirclePainter(
+                                                    radius: 6,
+                                                    color: color,
+                                                    strokeWidth: 2,
+                                                    strokeColor: Colors.white,
+                                                  );
+                                                },
+                                              ),
+                                            );
+                                          }).toList();
+                                        },
+                                      ),
+
+                                      // 2. TAMPILKAN ANGKA DI SUMBU (Kiri & Bawah)
+                                      titlesData: FlTitlesData(
+                                        show: true,
+                                        topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                                        rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                                        
+                                        // Sumbu Kiri (Nilai 0 - 100)
+                                        leftTitles: AxisTitles(
+                                          sideTitles: SideTitles(
+                                            showTitles: true,
+                                            reservedSize: 32,
+                                            interval: 25, // Memunculkan angka kelipatan 25 (0, 25, 50, 75, 100)
+                                            getTitlesWidget: (value, meta) {
+                                              return Padding(
+                                                padding: const EdgeInsets.only(right: 8),
+                                                child: Text(
+                                                  value.toInt().toString(),
+                                                  textAlign: TextAlign.end,
+                                                  style: TextStyle(
+                                                    color: isDark ? Colors.white54 : Colors.black45,
+                                                    fontSize: 10,
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                ),
+                                              );
+                                            },
+                                          ),
+                                        ),
+                                        
+                                        // Sumbu Bawah (Garis Kronologis/Waktu)
+                                        bottomTitles: AxisTitles(
+                                          sideTitles: SideTitles(
+                                            showTitles: true,
+                                            reservedSize: 22,
+                                            // Menghitung interval agar teks bawah tidak menumpuk berantakan
+                                            interval: (chartPoints.length / 4).clamp(1, 90).toDouble(), 
+                                            getTitlesWidget: (value, meta) {
+                                              // Menampilkan penanda posisi data (misal: Titik ke-1, Titik ke-5, dst)
+                                              if (value == 0) return const Text('');
+                                              return Text(
+                                                "H-${chartPoints.length - value.toInt()}",
+                                                style: TextStyle(
+                                                  color: isDark ? Colors.white38 : Colors.black38,
+                                                  fontSize: 9,
+                                                ),
+                                              );
+                                            },
+                                          ),
+                                        ),
+                                      ),
+
+                                      // 3. DESAIN GARIS LATAR (Grid) Yang Lebih Lembut
+                                      gridData: FlGridData(
+                                        show: true,
+                                        drawVerticalLine: false, // Hanya garis horizontal agar bersih
+                                        getDrawingHorizontalLine: (value) {
+                                          return FlLine(
+                                            color: isDark ? Colors.white10 : Colors.black.withOpacity(0.05),
+                                            strokeWidth: 1,
+                                            dashArray: [4, 4], // Membuat garis putus-putus bergaya modern
+                                          );
+                                        },
+                                      ),
+
+                                      // 4. MATIKAN BORDER KOTAK YANG KAKU
+                                      borderData: FlBorderData(show: false),
+
+                                      // 5. KUSTOMISASI GARIS UTAMA GRAFIK (Gradient & Glow)
+                                      // Ganti bagian ini:
+                                      lineBarsData: [
+                                        LineChartBarData(
+                                          spots: chartPoints.asMap().entries.map((e) => FlSpot(e.key.toDouble(), e.value)).toList(),
+                                          isCurved: true,
+                                          curveSmoothness: 0.25, // <--- UBAH DARI curveRadius MENJADI curveSmoothness
+                                          color: color,
+                                          barWidth: 3.5,
+                                          isStrokeCapRound: true,
+                                          
+                                          // Efek Titik kecil di setiap koordinat asli
+                                          dotData: FlDotData(
+                                            show: chartPoints.length <= 7, // Hanya munculkan titik permanen jika datanya sedikit (7 hari) agar tidak sesak
+                                            getDotPainter: (spot, percent, barData, index) => FlDotCirclePainter(
+                                              radius: 3,
+                                              color: Colors.white,
+                                              strokeWidth: 2,
+                                              strokeColor: color,
+                                            ),
+                                          ),
+                                          
+                                          // Gradien warna transparan di bawah garis grafik (Efek Area Chart)
+                                          belowBarData: BarAreaData(
+                                            show: true,
+                                            gradient: LinearGradient(
+                                              begin: Alignment.topCenter,
+                                              end: Alignment.bottomCenter,
+                                              colors: [
+                                                color.withOpacity(0.25),
+                                                color.withOpacity(0.00),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                }(),
+                              ),
+                            ]
+                          ],
+                        ),
+                      )
+                    : const SizedBox.shrink(),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  });
 }
 
-  // =====================================================
-  // SEARCH
-  // =====================================================
+// =====================================================
+// 1. ARTICLE HEADER
+// =====================================================
 
-  Widget _buildSearchBar(BuildContext context) {
-  final TextEditingController
-      searchController =
-      TextEditingController();
+Widget _buildArticleHeader() {
+  return Obx(() {
+    final isDark = Get.find<GlobalAuthController>().isDarkMode.value;
+    const primaryBlue = Color(0xFF2E66E7);
+
+    return Row(
+      children: [
+        // Garis aksen vertikal minimalis pengganti ikon
+        Container(
+          width: 4,
+          height: 24, // Menyesuaikan tinggi tumpukan teks
+          decoration: BoxDecoration(
+            color: primaryBlue,
+            borderRadius: BorderRadius.circular(2),
+          ),
+        ),
+        const SizedBox(width: 12),
+        
+        // Teks Judul & Sub-judul
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                "Artikel Kesehatan Mental",
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                  letterSpacing: 0.2,
+                  color: isDark ? Colors.white : Colors.black87,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                "Wawasan & tips terbaru dari Alodokter",
+                style: TextStyle(
+                  fontSize: 11,
+                  color: isDark ? Colors.white54 : Colors.black54,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  });
+}
+
+// =====================================================
+// 2. SEARCH BAR
+// =====================================================
+
+Widget _buildSearchBar(BuildContext context) {
+  final TextEditingController searchController = TextEditingController();
 
   return Obx(() {
     final isDark = Get.find<GlobalAuthController>().isDarkMode.value;
     final cardColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
-    final textColor = isDark ? Colors.white : Colors.black;
+    final textColor = isDark ? Colors.white : Colors.black87;
+    const primaryBlue = Color(0xFF2E66E7);
 
-    return Row(
-
-    children: [
-
-      Expanded(
-
-        child: TextField(
-
-          controller: searchController,
-
-          onSubmitted: (value) {
-
-            controller.searchArticle(value);
-          },
-
-          style: TextStyle(color: textColor),
-          decoration: InputDecoration(
-
-            hintText: "Cari artikel...",
-
-            prefixIcon:
-                const Icon(Icons.search),
-
-            filled: true,
-
-            fillColor: cardColor,
-
-            contentPadding:
-                const EdgeInsets.symmetric(
-                    vertical: 14),
-
-            border: OutlineInputBorder(
-
-              borderRadius:
-                  BorderRadius.circular(30),
-
-              borderSide: BorderSide.none,
+    return Container(
+      decoration: BoxDecoration(
+        color: cardColor,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(isDark ? 0.2 : 0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          )
+        ],
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: TextField(
+              controller: searchController,
+              onSubmitted: (value) => controller.searchArticle(value),
+              style: TextStyle(color: textColor, fontSize: 14),
+              decoration: InputDecoration(
+                hintText: "Cari topik artikel...",
+                hintStyle: TextStyle(color: isDark ? Colors.white38 : Colors.black38),
+                prefixIcon: Icon(Icons.search_rounded, color: isDark ? Colors.white54 : Colors.black45),
+                border: InputBorder.none,
+                contentPadding: const EdgeInsets.symmetric(vertical: 16),
+              ),
             ),
           ),
-        ),
+          Padding(
+            padding: const EdgeInsets.only(right: 6),
+            child: InkWell(
+              onTap: () => controller.searchArticle(searchController.text),
+              borderRadius: BorderRadius.circular(14),
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: primaryBlue,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: const Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 20),
+              ),
+            ),
+          )
+        ],
       ),
-
-      const SizedBox(width: 10),
-
-      InkWell(
-
-        onTap: () {
-
-          controller.searchArticle(
-            searchController.text,
-          );
-        },
-
-        borderRadius:
-            BorderRadius.circular(15),
-
-        child: Container(
-
-          padding:
-              const EdgeInsets.all(14),
-
-          decoration: BoxDecoration(
-
-            color:
-                const Color(0xFF2E66E7),
-
-            borderRadius:
-                BorderRadius.circular(15),
-          ),
-
-          child: const Icon(
-
-            Icons.arrow_forward,
-
-            color: Colors.white,
-          ),
-        ),
-      )
-    ],
-  );
+    );
   });
 }
 
-  // =====================================================
-  // ARTICLE SECTION
-  // =====================================================
+// =====================================================
+// 3. ARTICLE SECTION
+// =====================================================
 
-  Widget _buildArticleSection(BuildContext context) {
+Widget _buildArticleSection(BuildContext context) {
   return Obx(() {
-    final data = controller.searchResult.isNotEmpty
-        ? controller.searchResult
+    final data = controller.searchResult.isNotEmpty 
+        ? controller.searchResult 
         : controller.articles;
 
     if (controller.isLoadingArticles.value) {
-      return const Center(
-        child: CircularProgressIndicator(),
+      return const Padding(
+        padding: EdgeInsets.all(40.0),
+        child: Center(child: CircularProgressIndicator()),
       );
     }
 
     if (data.isEmpty) {
-      return const Center(
-        child: Text("Artikel tidak ditemukan"),
+      return Padding(
+        padding: const EdgeInsets.all(40.0),
+        child: Center(
+          child: Column(
+            children: [
+              Icon(Icons.article_outlined, size: 48, color: Colors.grey.shade400),
+              const SizedBox(height: 12),
+              Text(
+                "Artikel tidak ditemukan",
+                style: TextStyle(color: Colors.grey.shade500),
+              ),
+            ],
+          ),
+        ),
       );
     }
 
-    final displayedArticles =
-        controller.showAllArticles.value
-            ? data
-            : data.take(5).toList();
+    final displayedArticles = controller.showAllArticles.value ? data : data.take(5).toList();
+    const primaryBlue = Color(0xFF2E66E7);
 
     return Column(
       children: [
-
         ...List.generate(
           displayedArticles.length,
-          (index) {
-            final article = displayedArticles[index];
-            return _articleCard(context, article);
-          },
+          (index) => _articleCard(context, displayedArticles[index]),
         ),
-
+        
+        // Tombol Toggle Tampilkan Lebih Banyak / Sedikit
         if (data.length > 5)
           Padding(
-            padding: const EdgeInsets.only(top: 10),
-            child: InkWell(
-              onTap: controller.toggleShowAllArticles,
-              borderRadius: BorderRadius.circular(15),
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  vertical: 12,
-                  horizontal: 20,
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-
-                    Text(
-                      controller.showAllArticles.value
-                          ? "Tampilkan Lebih Sedikit"
-                          : "Lihat Semua",
-                      style: const TextStyle(
-                        color: Color(0xFF2E66E7),
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-
-                    const SizedBox(width: 6),
-
-                    Icon(
-                      controller.showAllArticles.value
-                          ? Icons.keyboard_arrow_up
-                          : Icons.keyboard_arrow_down,
-                      color: const Color(0xFF2E66E7),
-                    ),
-                  ],
-                ),
+            padding: const EdgeInsets.only(top: 8, bottom: 20),
+            child: TextButton.icon(
+              onPressed: controller.toggleShowAllArticles,
+              style: TextButton.styleFrom(
+                foregroundColor: primaryBlue,
+                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 24),
+                backgroundColor: primaryBlue.withOpacity(0.05),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              ),
+              icon: Text(
+                controller.showAllArticles.value ? "Tampilkan Lebih Sedikit" : "Lihat Semua (${data.length})",
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+              label: Icon(
+                controller.showAllArticles.value ? Icons.keyboard_arrow_up_rounded : Icons.keyboard_arrow_down_rounded,
               ),
             ),
           ),
@@ -1093,196 +1381,122 @@ Widget _trendTile(
   });
 }
 
-  // =====================================================
-  // ARTICLE CARD
-  // =====================================================
+// =====================================================
+// 4. ARTICLE CARD
+// =====================================================
 
-  Widget _articleCard(
-  BuildContext context,
-  ArticleModel article,
-) {
+Widget _articleCard(BuildContext context, ArticleModel article) {
   final isDark = Get.find<GlobalAuthController>().isDarkMode.value;
   final cardColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
-  final descColor = isDark ? Colors.grey.shade400 : Colors.grey.shade700;
+  final descColor = isDark ? Colors.white60 : Colors.black54;
+  const primaryBlue = Color(0xFF2E66E7);
 
   return Container(
-    margin: const EdgeInsets.only(bottom: 18),
+    margin: const EdgeInsets.only(bottom: 20),
     decoration: BoxDecoration(
       color: cardColor,
       borderRadius: BorderRadius.circular(24),
       boxShadow: [
         BoxShadow(
-          color: Colors.black.withOpacity(0.04),
-          blurRadius: 12,
-          offset: const Offset(0, 5),
+          color: Colors.black.withOpacity(isDark ? 0.2 : 0.05),
+          blurRadius: 15,
+          offset: const Offset(0, 6),
         )
       ],
     ),
     child: Column(
-      crossAxisAlignment:
-          CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-
-        // ==========================
-        // IMAGE
-        // ==========================
-
+        // Gambar Artikel
         ClipRRect(
-          borderRadius:
-              const BorderRadius.vertical(
-            top: Radius.circular(24),
-          ),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
           child: Image.network(
             article.image,
-            height: 180,
+            height: 170, // Sedikit dipertajam proporsinya
             width: double.infinity,
             fit: BoxFit.cover,
-
-            errorBuilder:
-                (context, error, stackTrace) {
+            errorBuilder: (context, error, stackTrace) {
               return Container(
-                height: 180,
-                color: Colors.grey.shade200,
-                child: const Center(
-                  child: Icon(
-                    Icons.image_not_supported,
-                    size: 40,
-                  ),
+                height: 170,
+                color: isDark ? Colors.white10 : Colors.grey.shade100,
+                child: Center(
+                  child: Icon(Icons.broken_image_rounded, size: 40, color: Colors.grey.shade400),
                 ),
               );
             },
           ),
         ),
 
+        // Konten Artikel
         Padding(
-          padding: const EdgeInsets.all(18),
+          padding: const EdgeInsets.all(20),
           child: Column(
-            crossAxisAlignment:
-                CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-
-              // ==========================
-              // CATEGORY
-              // ==========================
-
+              // Badge Kategori
               Container(
-                padding:
-                    const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 5,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
-                  color: Colors.blue.shade50,
-                  borderRadius:
-                      BorderRadius.circular(10),
+                  color: primaryBlue.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
-                  article.category,
+                  article.category.toUpperCase(),
                   style: const TextStyle(
-                    fontSize: 11,
-                    color: Color(0xFF2E66E7),
-                    fontWeight:
-                        FontWeight.bold,
+                    fontSize: 10,
+                    color: primaryBlue,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 0.5,
                   ),
                 ),
               ),
-
               const SizedBox(height: 14),
 
-              // ==========================
-              // TITLE
-              // ==========================
-
+              // Judul
               Text(
                 article.title,
-                style: const TextStyle(
-                  fontWeight:
-                      FontWeight.bold,
-                  fontSize: 17,
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                  height: 1.3,
+                  color: isDark ? Colors.white : Colors.black87,
                 ),
               ),
+              const SizedBox(height: 8),
 
-              const SizedBox(height: 10),
-
-              // ==========================
-              // DESCRIPTION
-              // ==========================
-
+              // Deskripsi
               Text(
                 article.description,
-                maxLines: 4,
-                overflow:
-                    TextOverflow.ellipsis,
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   fontSize: 13,
                   color: descColor,
-                  height: 1.6,
+                  height: 1.5,
                 ),
               ),
+              const SizedBox(height: 18),
 
-              const SizedBox(height: 16),
-
-              // ==========================
-              // BUTTON
-              // ==========================
-
+              // Tombol Baca
               Align(
-                alignment:
-                    Alignment.centerRight,
-                child: InkWell(
-                  onTap: () async {
-
-                    final Uri uri =
-                        Uri.parse(
-                      article.url,
-                    );
-
-                    await launchUrl(
-                      uri,
-                      mode: LaunchMode
-                          .externalApplication,
-                    );
+                alignment: Alignment.centerRight,
+                child: ElevatedButton.icon(
+                  onPressed: () async {
+                    final Uri uri = Uri.parse(article.url);
+                    await launchUrl(uri, mode: LaunchMode.externalApplication);
                   },
-                  child: Container(
-                    padding:
-                        const EdgeInsets
-                            .symmetric(
-                      horizontal: 14,
-                      vertical: 10,
-                    ),
-                    decoration:
-                        BoxDecoration(
-                      color: const Color(
-                          0xFF2E66E7),
-                      borderRadius:
-                          BorderRadius
-                              .circular(14),
-                    ),
-                    child: const Row(
-                      mainAxisSize:
-                          MainAxisSize.min,
-                      children: [
-
-                        Icon(
-                          Icons.open_in_new,
-                          color:
-                              Colors.white,
-                          size: 18,
-                        ),
-
-                        SizedBox(width: 8),
-
-                        Text(
-                          "Baca Artikel",
-                          style: TextStyle(
-                            color:
-                                Colors.white,
-                            fontWeight:
-                                FontWeight
-                                    .bold,
-                          ),
-                        )
-                      ],
+                  icon: const Icon(Icons.open_in_new_rounded, size: 16),
+                  label: const Text(
+                    "Baca Artikel",
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: primaryBlue,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
                     ),
                   ),
                 ),
@@ -1299,141 +1513,162 @@ Widget _trendTile(
   // RELAKSASI
   // =====================================================
 
-  Widget _buildQuickRelaxationGrid() {
-    final features = [
-      {
-        "title": "Musik Relaksasi",
-        "icon": Icons.music_note,
-        "route": "/relaxation-music",
-      },
-      {
-        "title": "Jurnal Harian",
-        "icon": Icons.edit_note,
-        "route": "/journal",
-      },
-      {
-        "title": "Pernapasan",
-        "icon": Icons.air,
-        "route": "/breathing",
-      },
-      {
-        "title": "Afirmasi",
-        "icon": Icons.favorite,
-        "route": "/affirmation",
-      },
-    ];
+Widget _buildQuickRelaxationGrid() {
+  // 1. Definisikan konfigurasi fitur dengan warna ikon & background badge masing-masing
+  final features = [
+    {
+      "title": "Musik Relaksasi",
+      "icon": Icons.music_note_rounded,
+      "route": "/relaxation-music",
+      "color": Colors.indigo,
+      "bgColor": Colors.indigo.withOpacity(0.12),
+    },
+    {
+      "title": "Jurnal Harian",
+      "icon": Icons.edit_note_rounded,
+      "route": "/journal",
+      "color": Colors.orange.shade700,
+      "bgColor": Colors.orange.withOpacity(0.12),
+    },
+    {
+      "title": "Latihan Napas",
+      "icon": Icons.air_rounded,
+      "route": "/breathing",
+      "color": Colors.teal,
+      "bgColor": Colors.teal.withOpacity(0.12),
+    },
+    {
+      "title": "Kata Afirmasi",
+      "icon": Icons.favorite_rounded,
+      "route": "/affirmation",
+      "color": Colors.pink,
+      "bgColor": Colors.pink.withOpacity(0.12),
+    },
+  ];
+
+  return Obx(() {
+    final isDark = Get.find<GlobalAuthController>().isDarkMode.value;
+    final cardColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
+    final textColor = isDark ? Colors.white : Colors.black87;
+    const primaryBlue = Color(0xFF2E66E7);
 
     return Column(
-
-      crossAxisAlignment:
-          CrossAxisAlignment.start,
-
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-
-        const Text(
-
-          "Relaksasi Cepat",
-
-          style: TextStyle(
-
-            fontWeight: FontWeight.bold,
-
-            fontSize: 18,
-          ),
-        ),
-
-        const SizedBox(height: 15),
-
-        GridView.builder(
-
-          shrinkWrap: true,
-
-          physics:
-              const NeverScrollableScrollPhysics(),
-
-          itemCount: features.length,
-
-          gridDelegate:
-              const SliverGridDelegateWithFixedCrossAxisCount(
-
-            crossAxisCount: 2,
-
-            crossAxisSpacing: 15,
-
-            mainAxisSpacing: 15,
-
-            childAspectRatio: 1.2,
-          ),
-
-          itemBuilder: (context, index) {
-
-            var item = features[index];
-
-            return InkWell(
-            borderRadius: BorderRadius.circular(20),
-
-            onTap: () {
-              Get.toNamed(
-                item["route"] as String,
-              );
-            },
-
-            child: Container(
-
+        // --- HEADER SEKSYEN ---
+        // Ganti bagian Row header di dalam _buildQuickRelaxationGrid() dengan ini:
+        Row(
+          children: [
+            // Garis aksen vertikal minimalis
+            Container(
+              width: 4,
+              height: 24,
               decoration: BoxDecoration(
-
-                color: Colors.white,
-
-                borderRadius:
-                    BorderRadius.circular(20),
-
-                boxShadow: [
-
-                  BoxShadow(
-
-                    color: Colors.black.withOpacity(0.04),
-
-                    blurRadius: 10,
-
-                    offset: const Offset(0, 4),
-                  )
-                ],
+                color: primaryBlue,
+                borderRadius: BorderRadius.circular(2),
               ),
-
+            ),
+            const SizedBox(width: 12),
+            Expanded(
               child: Column(
-
-                mainAxisAlignment:
-                    MainAxisAlignment.center,
-
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-
-                  Icon(
-
-                    item['icon'] as IconData,
-
-                    size: 34,
-
-                    color: const Color(0xFF2E66E7),
-                  ),
-
-                  const SizedBox(height: 10),
-
                   Text(
-
-                    item['title'] as String,
-
-                    style: const TextStyle(
-
-                      fontWeight: FontWeight.w600,
+                    "Relaksasi Cepat",
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                      letterSpacing: 0.2,
+                      color: isDark ? Colors.white : Colors.black87,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    "Ambil jeda sejenak untuk menenangkan pikiranmu",
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: isDark ? Colors.white54 : Colors.black54,
                     ),
                   ),
                 ],
               ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 20),
+
+        // --- GRID MENU RELAKSASI ---
+        GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: features.length,
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            crossAxisSpacing: 16,
+            mainAxisSpacing: 16,
+            childAspectRatio: 1.15, // Proporsi kartu sedikit lebih ramping & pas
+          ),
+          itemBuilder: (context, index) {
+            final item = features[index];
+            final itemColor = item["color"] as Color;
+            final badgeBg = item["bgColor"] as Color;
+
+            return Material(
+              color: cardColor,
+              borderRadius: BorderRadius.circular(24), // Sudut melengkung premium
+              clipBehavior: Clip.antiAlias, // Memastikan ripple effect terpotong rapi di ujung
+              child: InkWell(
+                onTap: () => Get.toNamed(item["route"] as String),
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start, // Mengubah ke rata kiri agar lebih modern
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween, // Memisahkan ikon di atas & teks di bawah
+                    children: [
+                      // Lingkaran wadah ikon (Badge)
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: badgeBg,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          item['icon'] as IconData,
+                          size: 26,
+                          color: itemColor,
+                        ),
+                      ),
+                      
+                      // Teks Judul Menu & Panah Indikator Kecil
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              item['title'] as String,
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                                color: textColor,
+                              ),
+                            ),
+                          ),
+                          Icon(
+                            Icons.arrow_forward_ios_rounded,
+                            size: 12,
+                            color: isDark ? Colors.white30 : Colors.black26,
+                          )
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
               ),
             );
           },
         ),
       ],
     );
-  }
+  });
+}
 }
