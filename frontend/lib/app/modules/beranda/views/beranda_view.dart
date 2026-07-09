@@ -14,10 +14,14 @@ class BerandaView extends GetView<BerandaController> {
 
   @override
   Widget build(BuildContext context) {
-    Get.find<NavigationController>().currentIndex.value = 0;
+    // Tunda pengubahan nilai sampai proses build frame ini selesai
+    Future.microtask(() {
+      Get.find<NavigationController>().currentIndex.value = 0;
+    });
+
     return Scaffold(
       resizeToAvoidBottomInset: true,
-
+      
       appBar: _buildAppBar(),
 
       body: RefreshIndicator(
@@ -328,7 +332,7 @@ Widget _buildSummaryCard() {
           ),
           
           const SizedBox(height: 24),
-
+          
           // Area Grafik Garis
           SizedBox(
             height: 180, 
@@ -540,103 +544,103 @@ Widget _buildFilterChip(String label, int index) {
   );
 }
 
-Widget _trendTile(
+// Widget _trendTile(
 
-  String title,
+//   String title,
 
-  int score,
+//   int score,
 
-  int change,
+//   int change,
 
-  Color color,
-) {
+//   Color color,
+// ) {
 
-  return Column(
+//   return Column(
 
-    crossAxisAlignment:
-        CrossAxisAlignment.start,
+//     crossAxisAlignment:
+//         CrossAxisAlignment.start,
 
-    children: [
+//     children: [
 
-      Row(
+//       Row(
 
-        mainAxisAlignment:
-            MainAxisAlignment.spaceBetween,
+//         mainAxisAlignment:
+//             MainAxisAlignment.spaceBetween,
 
-        children: [
+//         children: [
 
-          Text(
+//           Text(
 
-            title,
+//             title,
 
-            style: const TextStyle(
+//             style: const TextStyle(
 
-              fontWeight: FontWeight.bold,
-            ),
-          ),
+//               fontWeight: FontWeight.bold,
+//             ),
+//           ),
 
-          Column(
+//           Column(
 
-            crossAxisAlignment:
-                CrossAxisAlignment.end,
+//             crossAxisAlignment:
+//                 CrossAxisAlignment.end,
 
-            children: [
+//             children: [
 
-              Text(
+//               Text(
 
-                "$score",
+//                 "$score",
 
-                style: TextStyle(
+//                 style: TextStyle(
 
-                  color: color,
+//                   color: color,
 
-                  fontWeight:
-                      FontWeight.bold,
-                ),
-              ),
+//                   fontWeight:
+//                       FontWeight.bold,
+//                 ),
+//               ),
 
-              Text(
+//               Text(
 
-                change >= 0
-                    ? "📈 +$change"
-                    : "📉 $change",
+//                 change >= 0
+//                     ? "📈 +$change"
+//                     : "📉 $change",
 
-                style: TextStyle(
+//                 style: TextStyle(
 
-                  fontSize: 11,
+//                   fontSize: 11,
 
-                  color: change >= 0
-                      ? Colors.green
-                      : Colors.red,
-                ),
-              )
-            ],
-          )
-        ],
-      ),
+//                   color: change >= 0
+//                       ? Colors.green
+//                       : Colors.red,
+//                 ),
+//               )
+//             ],
+//           )
+//         ],
+//       ),
 
-      const SizedBox(height: 8),
+//       const SizedBox(height: 8),
 
-      ClipRRect(
+//       ClipRRect(
 
-        borderRadius:
-            BorderRadius.circular(10),
+//         borderRadius:
+//             BorderRadius.circular(10),
 
-        child: LinearProgressIndicator(
+//         child: LinearProgressIndicator(
 
-          value: score / 100,
+//           value: score / 100,
 
-          minHeight: 10,
+//           minHeight: 10,
 
-          backgroundColor:
-              Colors.grey.shade200,
+//           backgroundColor:
+//               Colors.grey.shade200,
 
-          color: color,
-        ),
-      )
-    ],
-  );
-}
+//           color: color,
+//         ),
+//       )
+//     ],
+//   );
+// }
 
   // =====================================================
   // WEEKLY TREND
