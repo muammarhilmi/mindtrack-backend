@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
-from app.routers import articles, auth, face, search, trends, users, assessment, chatbot
+from app.routers import articles, auth, face, search, trends, users, assessment, chatbot, journal
 
 app = FastAPI(
     title=settings.APP_TITLE,
@@ -33,6 +33,7 @@ app.include_router(search.router)
 app.include_router(assessment.router)
 app.include_router(chatbot.router)
 app.include_router(face.router)
+app.include_router(journal.router)
 
 
 @app.get("/", tags=["Root"])

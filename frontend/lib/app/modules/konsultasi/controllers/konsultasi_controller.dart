@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
@@ -6,6 +8,7 @@ import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'package:flutter_tts/flutter_tts.dart';
 import '../../../data/assessment_data.dart';
 import '../../../data/providers/assessment_provider.dart';
+import '../../../controllers/navigation_controller.dart';
 
 // ══════════════════════════════════════════════════════════════
 //  Model satu pesan chat (untuk riwayat UI gelembung)
@@ -53,16 +56,21 @@ class KonsultasiController extends GetxController {
   final FlutterTts _tts = FlutterTts();
   bool _sttReady = false;
 
-  // Groq
-  static const _groqUrl  = 'https://api.groq.com/openai/v1/chat/completions';
-  static const _groqKey  = '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'; // ← isi API key
-  static const _groqModel = 'llama-3.3-70b-versatile';
+  // ── Groq API ──────────────────────────────────────────────────
+  // Dapatkan API Key di https://console.groq.com/keys
+  static const _groqKey   = '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'; 
+  static const _groqModel = 'llama-3.3-70b-versatile'; 
+  static const _groqUrl   = 'https://api.groq.com/openai/v1/chat/completions';
 
-  // Riwayat untuk konteks Groq (role: system/user/assistant)
-  final List<Map<String, String>> _groqHistory = [];
+  // Riwayat percakapan format standar OpenAI/Groq: role 'user' / 'assistant'
+  final List<Map<String, String>> _chatHistory = [];
 
   // Guard agar tidak ada dua permintaan paralel
   bool _processing = false;
+
+  // Apakah sesi voice sedang "aktif"
+  bool _sessionActive = false;
+  StreamSubscription<int>? _tabSub;
 
   // ══════════════════════════════════════════════════════════════
   //  LIFECYCLE
@@ -71,19 +79,19 @@ class KonsultasiController extends GetxController {
   void onInit() {
     super.onInit();
     _initEngines();
+    _watchTabChanges();
   }
 
   Future<void> _initEngines() async {
-    // TTS
+    // 1. Pengaturan Dasar TTS
     await _tts.setLanguage('id-ID');
-    await _tts.setSpeechRate(0.46);
+    await _tts.setSpeechRate(0.48); // Sedikit diperlambat agar lebih empatik
     await _tts.setPitch(1.0);
     await _tts.awaitSpeakCompletion(true);
 
-    // STT
+    // 2. Inisialisasi STT
     _sttReady = await _speech.initialize(
       onStatus: (s) {
-        // 'notListening' / 'done' → auto-submit jika ada transkripsi
         if ((s == 'notListening' || s == 'done') &&
             voiceStatus.value == VoiceStatus.listening) {
           _onListenDone();
@@ -93,17 +101,60 @@ class KonsultasiController extends GetxController {
         voiceStatus.value = VoiceStatus.idle;
       },
     );
+
+    // 3. Panggil fungsi ubah suara secara terpisah TANPA 'await'
+    // Sehingga tidak memblokir alur aplikasi jika prosesnya lama.
+    _optimizeVoice(); 
   }
 
-  // ══════════════════════════════════════════════════════════════
-  //  MODE SWITCH
-  // ══════════════════════════════════════════════════════════════
+  // Fungsi KHUSUS untuk mengubah ke suara "Network"
+  Future<void> _optimizeVoice() async {
+    try {
+      final voices = await _tts.getVoices;
+      if (voices == null) return;
+
+      for (var voice in voices) {
+        final name = voice['name']?.toString().toLowerCase() ?? '';
+        final locale = voice['locale']?.toString().toLowerCase() ?? '';
+        
+        if (locale.contains('id') && name.contains('network')) {
+          await _tts.setVoice({
+            "name": voice['name'].toString(),
+            "locale": voice['locale'].toString()
+          });
+          debugPrint('Suara diubah ke natural (network): ${voice['name']}');
+          break;
+        }
+      }
+    } catch (e) {
+      debugPrint('Gagal mengubah suara, menggunakan suara bawaan. Error: $e');
+    }
+  }
+
+  void _watchTabChanges() {
+    if (!Get.isRegistered<NavigationController>()) return;
+    final nav = Get.find<NavigationController>();
+    _tabSub = nav.currentIndex.listen((index) {
+      if (index != 1) {
+        _stopSession();
+      }
+    });
+  }
+
+  void _stopSession() {
+    _sessionActive = false;
+    _speech.stop();
+    _tts.stop();
+    if (voiceStatus.value != VoiceStatus.idle) {
+      voiceStatus.value = VoiceStatus.idle;
+    }
+    liveTranscript.value = '';
+  }
+
   void switchMode(bool voice) {
     isVoiceMode.value = voice;
     if (!voice) {
-      _tts.stop();
-      _speech.stop();
-      voiceStatus.value = VoiceStatus.idle;
+      _stopSession();
     }
   }
 
@@ -115,34 +166,32 @@ class KonsultasiController extends GetxController {
       Get.snackbar('Izin Mikrofon', 'Aktifkan izin mikrofon di pengaturan.');
       return;
     }
-    _groqHistory.clear();
+    _chatHistory.clear();
     chatMessages.clear();
     currentStep.value = 0;
+    _sessionActive = true;
 
     const greeting =
         'Halo! Saya asisten MindTrack. Saya akan menemani Anda '
         'menjawab beberapa pertanyaan seputar perasaan dan aktivitas '
-        'hari ini. Cukup jawab dengan santai ya.';
+        'hari ini. Ketuk mic saat Anda siap menjawab ya.';
     await _aiSay(greeting);
-    // Setelah AI selesai bicara, langsung minta user bicara
-    await _startListening();
   }
 
   // ══════════════════════════════════════════════════════════════
   //  STT — MULAI MENDENGARKAN
   // ══════════════════════════════════════════════════════════════
   Future<void> _startListening() async {
-    if (!_sttReady || _processing) return;
+    if (!_sttReady || _processing || !_sessionActive) return;
     liveTranscript.value = '';
     voiceStatus.value = VoiceStatus.listening;
 
     await _speech.listen(
       localeId: 'id_ID',
       listenFor: const Duration(seconds: 30),
-      pauseFor: const Duration(seconds: 2), // ← jeda diam 2 dtk → auto-submit
+      pauseFor: const Duration(seconds: 2),
       onResult: (result) {
         liveTranscript.value = result.recognizedWords;
-        // finalResult = STT yakin user sudah selesai bicara
         if (result.finalResult && result.recognizedWords.isNotEmpty) {
           _onListenDone();
         }
@@ -150,35 +199,39 @@ class KonsultasiController extends GetxController {
     );
   }
 
-  // Dipanggil saat STT berhenti (auto atau manual)
   void _onListenDone() {
-    if (_processing) return;
+    // 1. Cek apakah sudah sedang diproses
+    if (_processing || !_sessionActive) return;
+
+    // 2. Kunci SEGERA agar panggilan kedua (dari onStatus) tidak tembus
+    _processing = true; 
     _speech.stop();
-    voiceStatus.value = VoiceStatus.thinking;
 
     final transcript = liveTranscript.value.trim();
+    
+    // Jika kosong, reset lock agar bisa dicoba lagi
     if (transcript.isEmpty) {
-      // Tidak ada suara → minta ulang
-      _aiSay('Maaf, saya tidak menangkap jawaban Anda. Bisa diulangi?')
-          .then((_) => _startListening());
+      _processing = false; 
+      voiceStatus.value = VoiceStatus.idle;
+      _aiSay('Maaf, saya tidak menangkap jawaban Anda. Ketuk mic dan coba lagi ya.');
       return;
     }
 
-    // Tampilkan gelembung user
+    voiceStatus.value = VoiceStatus.thinking;
     chatMessages.add(ChatMessage(text: transcript, isAi: false));
     liveTranscript.value = '';
 
+    // 3. Panggil Groq (tetap gunakan _processing = true agar tidak ada input lain masuk)
     _sendToGroq(transcript);
   }
 
   // ══════════════════════════════════════════════════════════════
-  //  KIRIM KE GROQ — INTI LOGIKA
+  //  KIRIM KE GROQ API
   // ══════════════════════════════════════════════════════════════
-  Future<void> _sendToGroq(String userText) async {
+  Future<void> _sendToGroq(String userText, {int attempt = 0}) async {
     if (_processing) return;
     _processing = true;
 
-    // Bangun konteks pertanyaan saat ini
     String ctx = '';
     if (currentStep.value < totalClinical) {
       final q = allClinicalQuestions[currentStep.value];
@@ -195,91 +248,129 @@ class KonsultasiController extends GetxController {
       ctx = 'Semua pertanyaan selesai. Buat kalimat penutup yang hangat tanpa diagnosis.';
     }
 
-    const systemPrompt = '''
+    // Prompt dipertajam untuk memastikan output JSON yang ketat
+    final systemPrompt = '''
 Kamu adalah konselor AI MindTrack yang hangat dan empatik, berbicara dalam Bahasa Indonesia natural.
 Tugasmu: merespons jawaban user dengan 1–2 kalimat empati yang mengalir,
-lalu menyambung ke pertanyaan berikutnya SECARA NATURAL (jangan kaku atau formal).
-JANGAN menyebutkan skala angka, pilihan ganda, atau kata "pertanyaan berikutnya".
+lalu menyambung ke pertanyaan berikutnya SECARA NATURAL.
+JANGAN menyebutkan skala angka atau pilihan ganda.
 
-Kembalikan HANYA JSON mentah (tanpa markdown), format persis:
+WAJIB MENGEMBALIKAN HANYA FORMAT JSON SEPERTI INI TANPA TEKS LAIN:
 {
   "skor": 0,
-  "respon": "kalimat respons + pertanyaan berikutnya yang mengalir"
+  "respon": "kalimat respons + pertanyaan berikutnya"
 }
 
 Nilai "skor":
-- Untuk pertanyaan klinis: integer 0–3 sesuai frekuensi yang diungkapkan user.
-- Untuk gaya hidup: integer 0–4 sesuai indeks opsi yang paling cocok.
-  Khusus durasi tidur: estimasi jam (0–12) sebagai angka desimal (gunakan field "jam_tidur" BUKAN "skor").
-- Jika tidak bisa dipastikan, gunakan nilai yang paling mendekati.
+- Untuk pertanyaan klinis: integer 0–3 sesuai frekuensi.
+- Untuk gaya hidup: integer 0–4 sesuai indeks opsi.
+  (Khusus durasi tidur: estimasi jam gunakan field "jam_tidur").
+Konteks saat ini: $ctx
 ''';
 
-    _groqHistory.add({'role': 'user', 'content': userText});
+    if (attempt == 0) {
+      _chatHistory.add({
+        'role': 'user',
+        'content': userText,
+      });
+    }
+
+    final List<Map<String, String>> messagesPayload = [
+      {'role': 'system', 'content': systemPrompt},
+      ..._chatHistory,
+    ];
 
     try {
       final res = await http.post(
         Uri.parse(_groqUrl),
         headers: {
-          'Authorization': 'Bearer $_groqKey',
+          'Authorization': 'Bearer $_groqKey', // Pastikan ganti API Key yang baru!
           'Content-Type': 'application/json',
         },
         body: jsonEncode({
           'model': _groqModel,
-          'messages': [
-            {'role': 'system', 'content': '$systemPrompt\n\nKonteks saat ini: $ctx'},
-            ..._groqHistory,
-          ],
-          'response_format': {'type': 'json_object'},
-          'max_tokens': 300,
+          'messages': messagesPayload,
+          'response_format': {'type': 'json_object'}, 
           'temperature': 0.7,
+          'max_tokens': 300,
         }),
-      );
+      ).timeout(const Duration(seconds: 40)); // Timeout diperpanjang jadi 40 detik
 
-      if (res.statusCode != 200) throw Exception('Groq error ${res.statusCode}');
+      if (res.statusCode != 200) {
+        throw Exception('API Error ${res.statusCode}: ${res.body}');
+      }
 
-      final raw  = jsonDecode(res.body)['choices'][0]['message']['content'] as String;
-      final json = jsonDecode(raw);
+      final body = jsonDecode(res.body) as Map<String, dynamic>;
+      String raw = body['choices'][0]['message']['content'] as String;
+      
+      // ── LOGIKA EKSTRAKSI JSON YANG LEBIH KUAT ──
+      // Mengambil teks HANYA di dalam kurung kurawal { ... }
+      final startIndex = raw.indexOf('{');
+      final endIndex = raw.lastIndexOf('}');
+      
+      if (startIndex != -1 && endIndex != -1) {
+        raw = raw.substring(startIndex, endIndex + 1);
+      } else {
+        throw Exception('Gagal menemukan format JSON di respons AI: $raw');
+      }
 
-      final String aiReply = json['respon'] ?? '';
+      final json = jsonDecode(raw) as Map<String, dynamic>;
 
-      // Simpan skor ke state
+      final String aiReply = (json['respon'] as String?)?.trim() ?? '';
+      if (aiReply.isEmpty) throw Exception('Respons AI kosong di dalam JSON');
+
       _applyScore(json);
 
-      // Maju ke step berikutnya
       if (currentStep.value < totalSteps) currentStep.value++;
 
-      _groqHistory.add({'role': 'assistant', 'content': aiReply});
+      _chatHistory.add({
+        'role': 'assistant',
+        'content': aiReply,
+      });
+      
+      _processing = false;
+
+      if (!_sessionActive) return; 
 
       await _aiSay(aiReply);
 
-      // Jika sesi belum selesai, langsung mulai dengarkan lagi
-      if (currentStep.value < totalSteps) {
-        await _startListening();
-      } else {
-        voiceStatus.value = VoiceStatus.idle;
-      }
-    } catch (e) {
-      const fallback = 'Maaf, koneksi saya terganggu. Bisa ulangi jawaban Anda?';
-      await _aiSay(fallback);
-      await _startListening();
-    } finally {
+    } catch (e, st) {
+      // INI PENTING: Mencetak error sebenarnya ke Debug Console
+      debugPrint('🚨 [ERROR GROQ API] 🚨');
+      debugPrint('Attempt: $attempt');
+      debugPrint('Error detail: $e');
+      debugPrint('=====================');
+      
       _processing = false;
+      if (!_sessionActive) return;
+
+      if (attempt < 1) {
+        // Jeda 1 detik sebelum mencoba ulang (hindari spam)
+        await Future.delayed(const Duration(milliseconds: 1000));
+        await _sendToGroq(userText, attempt: attempt + 1);
+        return;
+      }
+
+      const fallback = 'Maaf, sistem saya sedang mengalami gangguan sesaat. Ketuk mic dan ulangi jawaban Anda ya.';
+      await _aiSay(fallback);
     }
   }
 
   void _applyScore(Map<String, dynamic> json) {
     final step = currentStep.value;
     if (step < totalClinical) {
-      final s = (json['skor'] as num?)?.toInt()?.clamp(0, 3) ?? 0;
-      clinicalAnswers[step] = s;
+      final raw = (json['skor'] as num?)?.toInt() ?? 0;
+      clinicalAnswers[step] = raw.clamp(0, 3).toInt();
     } else if (step < totalSteps) {
       final li = step - totalClinical;
       if (li == 0) {
-        // Durasi tidur: jam_tidur (desimal) atau fallback ke skor
-        final hours = (json['jam_tidur'] ?? json['skor'] as num?)?.toDouble() ?? 7.0;
+        final hours = (json['jam_tidur'] as num?)?.toDouble() ??
+            (json['skor'] as num?)?.toDouble() ??
+            7.0;
         sleepHours.value = hours.clamp(0.0, 12.0);
       } else {
-        final s = (json['skor'] as num?)?.toInt()?.clamp(0, 4) ?? 0;
+        final raw = (json['skor'] as num?)?.toInt() ?? 0;
+        final s = raw.clamp(0, 4).toInt();
         switch (li) {
           case 1: sleepQuality.value      = s; break;
           case 2: physicalActivity.value  = s; break;
@@ -290,26 +381,23 @@ Nilai "skor":
     }
   }
 
-  // ══════════════════════════════════════════════════════════════
-  //  TTS HELPER
-  // ══════════════════════════════════════════════════════════════
   Future<void> _aiSay(String text) async {
     chatMessages.add(ChatMessage(text: text, isAi: true));
     voiceStatus.value = VoiceStatus.speaking;
     await _tts.speak(text);
-    voiceStatus.value = VoiceStatus.idle;
+    if (_sessionActive || voiceStatus.value == VoiceStatus.speaking) {
+      voiceStatus.value = VoiceStatus.idle;
+    }
   }
 
-  // Tombol "ketuk mic" manual (opsional — jika user ingin mulai tanpa menunggu)
   void tapMic() {
     if (voiceStatus.value == VoiceStatus.listening) {
-      // Paksa selesai lebih awal
+      // Cukup hentikan STT. 
+      // Listener di _initEngines() otomatis mendeteksi 'notListening' dan memanggil _onListenDone().
       _speech.stop();
-      _onListenDone();
     } else if (voiceStatus.value == VoiceStatus.idle) {
       _startListening();
     }
-    // Saat thinking/speaking, tidak ada aksi
   }
 
   // ══════════════════════════════════════════════════════════════
@@ -341,7 +429,7 @@ Nilai "skor":
   }
 
   // ══════════════════════════════════════════════════════════════
-  //  MANUAL MODE HELPERS (tidak berubah)
+  //  MANUAL MODE HELPERS
   // ══════════════════════════════════════════════════════════════
   List<int> get phqAnswers    => clinicalAnswers.sublist(0,  9).map((e) => e ?? 0).toList();
   List<int> get gadAnswers    => clinicalAnswers.sublist(9,  16).map((e) => e ?? 0).toList();
@@ -400,10 +488,15 @@ Nilai "skor":
     productivity.value      = null;
     currentStep.value = 0;
     chatMessages.clear();
-    _groqHistory.clear();
+    _chatHistory.clear();
     liveTranscript.value = '';
     voiceStatus.value = VoiceStatus.idle;
     if (pageController.hasClients) pageController.jumpToPage(0);
+  }
+
+  void resetForAccountSwitch() {
+    _stopSession();
+    resetAssessment();
   }
 
   Future<Map<String, dynamic>> submitAssessment() async {
@@ -426,9 +519,9 @@ Nilai "skor":
 
   @override
   void onClose() {
+    _stopSession();
+    _tabSub?.cancel();
     pageController.dispose();
-    _speech.stop();
-    _tts.stop();
     super.onClose();
   }
 }

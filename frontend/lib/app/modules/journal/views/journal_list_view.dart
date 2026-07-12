@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:hive/hive.dart';
+import 'package:get/get.dart';
+
+import 'package:capstone/app/core/controllers/global_auth_controller.dart';
+import 'package:capstone/app/data/models/journal_model.dart';
+import 'package:capstone/app/data/services/journal_service.dart';
 
 class JournalListView extends StatefulWidget {
   const JournalListView({super.key});
@@ -9,12 +13,49 @@ class JournalListView extends StatefulWidget {
 }
 
 class _JournalListViewState extends State<JournalListView> {
-  late Box box;
+  final JournalService journalService = JournalService();
+  final GlobalAuthController authController = Get.find<GlobalAuthController>();
+
+  List<JournalModel> journals = [];
+  bool isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    box = Hive.box('journals');
+    loadJournal();
+  }
+
+  Future<void> loadJournal() async {
+    final user = authController.currentUser.value;
+
+    if (user == null) {
+      setState(() {
+        isLoading = false;
+      });
+      return;
+    }
+
+    try {
+      final data = await journalService.getJournal(user.id);
+
+      setState(() {
+        journals = data.reversed.toList();
+        isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        isLoading = false;
+      });
+
+      // Pengecekan mounted sebelum menggunakan context di dalam fungsi async
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.toString()),
+          ),
+        );
+      }
+    }
   }
 
   // Helper untuk mengubah string ISO8601 menjadi tanggal yang manis dibaca tanpa package tambahan
@@ -31,7 +72,8 @@ class _JournalListViewState extends State<JournalListView> {
   }
 
   // Dialog konfirmasi hapus agar tidak sengaja terhapus
-  void _confirmDelete(BuildContext context, int index) {
+  // Parameter diubah dari int index menjadi JournalModel item
+  void _confirmDelete(BuildContext context, JournalModel item) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -44,18 +86,46 @@ class _JournalListViewState extends State<JournalListView> {
             child: const Text("Batal", style: TextStyle(color: Colors.grey)),
           ),
           TextButton(
-            onPressed: () {
+            // onPressed harus async
+            onPressed: () async {
+              Navigator.pop(context); // Tutup dialog terlebih dahulu
+              
+              // Set loading di layar utama
               setState(() {
-                box.deleteAt(box.length - 1 - index);
+                isLoading = true; 
               });
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text("Jurnal telah dihapus"),
-                  behavior: SnackBarBehavior.floating,
-                  margin: EdgeInsets.all(16),
-                ),
-              );
+
+              try {
+                // Hapus await dari dalam setState
+                await journalService.deleteJournal(item.id!);
+                await loadJournal();
+
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text("Jurnal telah dihapus"),
+                      behavior: SnackBarBehavior.floating,
+                      margin: EdgeInsets.all(16),
+                    ),
+                  );
+                }
+              } catch (e) {
+                
+                // Handle jika terjadi error saat menghapus
+                setState(() {
+                  isLoading = false;
+                });
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text("Gagal menghapus jurnal: $e"),
+                      behavior: SnackBarBehavior.floating,
+                      margin: const EdgeInsets.all(16),
+                      backgroundColor: Colors.redAccent,
+                    ),
+                  );
+                }
+              }
             },
             child: const Text("Hapus", style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
           ),
@@ -65,7 +135,7 @@ class _JournalListViewState extends State<JournalListView> {
   }
 
   // Dialog membaca jurnal dengan tampilan layout seperti lembar catatan premium
-  void _showReadDialog(BuildContext context, Map item) {
+  void _showReadDialog(BuildContext context, JournalModel item) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     showDialog(
@@ -87,7 +157,7 @@ class _JournalListViewState extends State<JournalListView> {
                       color: const Color(0xFF2E66E7).withOpacity(0.1),
                       shape: BoxShape.circle,
                     ),
-                    child: Text(item["mood"] ?? "😊", style: const TextStyle(fontSize: 24)),
+                    child: Text(item.mood, style: const TextStyle(fontSize: 24)),
                   ),
                   const SizedBox(width: 14),
                   Expanded(
@@ -95,7 +165,7 @@ class _JournalListViewState extends State<JournalListView> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          item["title"] ?? "Tanpa Judul",
+                          item.title,
                           style: TextStyle(
                             fontSize: 18, 
                             fontWeight: FontWeight.bold,
@@ -104,7 +174,7 @@ class _JournalListViewState extends State<JournalListView> {
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          _formatReadableDate(item["date"]),
+                          _formatReadableDate(item.createdAt.toIso8601String()),
                           style: const TextStyle(fontSize: 12, color: Colors.grey),
                         ),
                       ],
@@ -120,7 +190,7 @@ class _JournalListViewState extends State<JournalListView> {
                 child: SingleChildScrollView(
                   physics: const BouncingScrollPhysics(),
                   child: Text(
-                    item["content"] ?? "",
+                    item.content,
                     style: TextStyle(
                       fontSize: 15, 
                       height: 1.6, 
@@ -153,7 +223,6 @@ class _JournalListViewState extends State<JournalListView> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final journals = box.values.toList().reversed.toList();
 
     // Tema Warna Adaptif
     const primaryBlue = Color(0xFF2E66E7);
@@ -171,7 +240,11 @@ class _JournalListViewState extends State<JournalListView> {
         elevation: 0,
       ),
       
-      body: journals.isEmpty
+      body: isLoading
+        ? const Center(
+            child: CircularProgressIndicator(),
+          )
+        : journals.isEmpty
           // --- PREMIUM EMPTY STATE ---
           ? Center(
               child: Padding(
@@ -213,7 +286,7 @@ class _JournalListViewState extends State<JournalListView> {
               physics: const BouncingScrollPhysics(),
               itemCount: journals.length,
               itemBuilder: (context, index) {
-                final item = journals[index] as Map;
+                final item = journals[index];
 
                 return Container(
                   margin: const EdgeInsets.only(bottom: 12),
@@ -246,7 +319,7 @@ class _JournalListViewState extends State<JournalListView> {
                                 shape: BoxShape.circle,
                               ),
                               child: Text(
-                                item["mood"] ?? "😊",
+                                item.mood,
                                 style: const TextStyle(fontSize: 22),
                               ),
                             ),
@@ -262,7 +335,7 @@ class _JournalListViewState extends State<JournalListView> {
                                     children: [
                                       Expanded(
                                         child: Text(
-                                          item["title"] ?? "-",
+                                          item.title,
                                           maxLines: 1,
                                           overflow: TextOverflow.ellipsis,
                                           style: TextStyle(
@@ -273,7 +346,7 @@ class _JournalListViewState extends State<JournalListView> {
                                         ),
                                       ),
                                       Text(
-                                        _formatReadableDate(item["date"]),
+                                        _formatReadableDate(item.createdAt.toIso8601String()),
                                         style: TextStyle(
                                           fontSize: 11, 
                                           color: isDark ? Colors.white30 : Colors.black38
@@ -283,7 +356,7 @@ class _JournalListViewState extends State<JournalListView> {
                                   ),
                                   const SizedBox(height: 6),
                                   Text(
-                                    item["content"]?.toString() ?? "",
+                                    item.content,
                                     maxLines: 2,
                                     overflow: TextOverflow.ellipsis,
                                     style: TextStyle(
@@ -303,7 +376,8 @@ class _JournalListViewState extends State<JournalListView> {
                               color: Colors.redAccent.withOpacity(0.7),
                               padding: EdgeInsets.zero,
                               constraints: const BoxConstraints(),
-                              onPressed: () => _confirmDelete(context, index),
+                              // Kirimkan object 'item' ke _confirmDelete
+                              onPressed: () => _confirmDelete(context, item), 
                             ),
                           ],
                         ),

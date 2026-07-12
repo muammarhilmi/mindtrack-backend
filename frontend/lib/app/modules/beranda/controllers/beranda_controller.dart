@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/material.dart'; // ⬅️ WAJIB, untuk PageController
 import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
 
@@ -7,6 +8,7 @@ import '../../../core/config/network_config.dart';
 import '../../../core/controllers/global_auth_controller.dart';
 import '../../../data/models/article_model.dart';
 import '../../../data/providers/assessment_provider.dart';
+import '../../../data/services/journal_service.dart';
 
 class BerandaController extends GetxController {
   // =====================================================
@@ -67,16 +69,37 @@ var chartFilterIndex = 0.obs;      // 0: Semua, 1: 7 Terakhir
   final isLoadingMentalChart = false.obs;
 
   // =====================================================
+// JOURNAL MOOD CHART
+// =====================================================
+
+final JournalService journalService = JournalService();
+
+final journals = <Map<String, dynamic>>[].obs;
+
+final isLoadingMoodChart = false.obs;
+
+var selectedPieIndex = (-1).obs;
+final PageController chartPageController = PageController();
+final RxInt currentChartPage = 0.obs;
+
+  // =====================================================
   // INIT
   // =====================================================
 
   @override
-  void onInit() {
-    super.onInit();
+void onInit() {
+  super.onInit();
 
-    fetchArticles();
-    fetchWeeklyTrend();
-    fetchMentalHistory();
+  fetchArticles();
+  fetchWeeklyTrend();
+  fetchMentalHistory();
+  fetchJournals();
+}
+
+@override
+  void onClose() {
+    chartPageController.dispose(); // ⬅️ WAJIB, cegah memory leak
+    super.onClose();
   }
 
   // =====================================================
@@ -239,4 +262,47 @@ var chartFilterIndex = 0.obs;      // 0: Semua, 1: 7 Terakhir
       isLoadingMentalChart.value = false;
     }
   }
+  // =====================================================
+// JOURNAL
+// =====================================================
+
+Future<void> fetchJournals() async {
+
+  try {
+
+    isLoadingMoodChart.value = true;
+
+
+    final user = auth.currentUser.value;
+
+
+    if(user == null){
+      print("USER BELUM LOGIN");
+      return;
+    }
+
+
+    final result = await journalService.getJournal(
+      user.id,
+    );
+
+
+    journals.value = result
+        .map((e)=>e.toJson())
+        .toList();
+
+
+  } catch(e){
+
+    print(
+      "ERROR FETCH JOURNAL: $e",
+    );
+
+  } finally {
+
+    isLoadingMoodChart.value = false;
+
+  }
+
+}
 }

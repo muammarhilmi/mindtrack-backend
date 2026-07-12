@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../controllers/beranda_controller.dart';
@@ -8,15 +9,19 @@ import '../../../core/controllers/global_auth_controller.dart';
 
 import '../../../widgets/main_bottom_nav.dart';
 import '../../../controllers/navigation_controller.dart';
-
+const double _kChartCardHeight = 320;
 class BerandaView extends GetView<BerandaController> {
   const BerandaView({Key? key}) : super(key: key);
+  
 
   @override
   Widget build(BuildContext context) {
-    // Tunda pengubahan nilai sampai proses build frame ini selesai
-    Future.microtask(() {
-      Get.find<NavigationController>().currentIndex.value = 0;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final nav = Get.find<NavigationController>();
+
+      if (nav.currentIndex.value != 0) {
+        nav.currentIndex.value = 0;
+      }
     });
 
     return Scaffold(
@@ -27,10 +32,12 @@ class BerandaView extends GetView<BerandaController> {
       body: RefreshIndicator(
 
         onRefresh: () async {
-
-          controller.fetchArticles();
-
-          controller.fetchWeeklyTrend();
+          await Future.wait([
+            controller.fetchArticles(),
+            controller.fetchWeeklyTrend(),
+            controller.fetchMentalHistory(),
+            controller.fetchJournals(),
+          ]);
         },
 
         child: SingleChildScrollView(
@@ -49,7 +56,7 @@ class BerandaView extends GetView<BerandaController> {
 
               const SizedBox(height: 20),
 
-              _buildSummaryCard(),
+              _buildInsightSection(),
               const SizedBox(height: 25),
 
               _buildWeeklyTrend(context),
@@ -154,12 +161,83 @@ class BerandaView extends GetView<BerandaController> {
   // SUMMARY
   // =====================================================
 
+// ============================================================
+// TAMBAHKAN INI DI CONTROLLER (GetX) KAMU:
+//
+//   final PageController chartPageController = PageController();
+//   final RxInt currentChartPage = 0.obs;
+//
+// (selectedChartIndex, selectedPieIndex, chartFilterIndex,
+//  isLoadingMentalChart, isLoadingMoodChart, mentalHistory,
+//  journals — semua tetap sama seperti punya kamu sekarang)
+// ============================================================
+/// Widget utama: gabungan kedua chart dalam satu PageView yang bisa digeser
+Widget _buildInsightSection() {
+  return Column(
+    children: [
+      SizedBox(
+        height: _kChartCardHeight,
+        child: PageView(
+          controller: controller.chartPageController,
+          onPageChanged: (index) {
+            controller.currentChartPage.value = index;
+            // reset seleksi titik/segmen saat pindah halaman biar tidak nyangkut
+            controller.selectedChartIndex.value = -1;
+            controller.selectedPieIndex.value = -1;
+          },
+          children: [
+            _buildSummaryCard(),
+            _buildMoodChart(),
+          ],
+        ),
+      ),
+      const SizedBox(height: 14),
+      _buildPageIndicator(),
+    ],
+  );
+}
+
+/// Indikator titik (dot) di bawah card, dengan animasi saat halaman aktif berubah
+Widget _buildPageIndicator() {
+  return Obx(() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: List.generate(2, (index) {
+        final isActive = controller.currentChartPage.value == index;
+        return GestureDetector(
+          onTap: () {
+            controller.chartPageController.animateToPage(
+              index,
+              duration: const Duration(milliseconds: 350),
+              curve: Curves.easeOutCubic,
+            );
+          },
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 250),
+            curve: Curves.easeOut,
+            margin: const EdgeInsets.symmetric(horizontal: 4),
+            width: isActive ? 22 : 8,
+            height: 8,
+            decoration: BoxDecoration(
+              color: isActive ? const Color(0xFF1E4AD9) : Colors.grey.shade300,
+              borderRadius: BorderRadius.circular(4),
+            ),
+          ),
+        );
+      }),
+    );
+  });
+}
+
+// ============================================================
+// CARD 1: Tren Mental (Line Chart)
+// ============================================================
 Widget _buildSummaryCard() {
   return Obx(() {
     // 1. State Loading
     if (controller.isLoadingMentalChart.value) {
       return Container(
-        height: 250,
+        height: _kChartCardHeight,
         decoration: BoxDecoration(
           gradient: const LinearGradient(
             colors: [Color(0xFF2E66E7), Color(0xFF4B8DFF)],
@@ -175,6 +253,7 @@ Widget _buildSummaryCard() {
     // 2. State Data Kosong
     if (controller.mentalHistory.isEmpty) {
       return Container(
+        height: _kChartCardHeight,
         padding: const EdgeInsets.all(30),
         decoration: BoxDecoration(
           color: Colors.white,
@@ -213,29 +292,26 @@ Widget _buildSummaryCard() {
       (a, b) => DateTime.parse(a["created_at"]).compareTo(DateTime.parse(b["created_at"])),
     );
 
-    // Jalankan filter berdasarkan pilihan user di dashboard
     if (controller.chartFilterIndex.value == 1 && histories.length > 7) {
       histories = histories.sublist(histories.length - 7);
     }
 
-    // Logika menentukan data aktif (jika disentuh lihat data titik tersebut, jika tidak tampilkan data terakhir)
-    final int activeIndex = controller.selectedChartIndex.value != -1 
-        && controller.selectedChartIndex.value < histories.length
-        ? controller.selectedChartIndex.value 
+    final int activeIndex = controller.selectedChartIndex.value != -1 &&
+            controller.selectedChartIndex.value < histories.length
+        ? controller.selectedChartIndex.value
         : histories.length - 1;
 
     final activeItem = histories[activeIndex];
     final activeScore = (activeItem["final_score"] ?? 0).toDouble();
     final activeDate = DateTime.parse(activeItem["created_at"]);
 
-    // Hitung perubahan (diff) khusus untuk data terakhir saja
     final latestScore = (histories.last["final_score"] ?? 0).toDouble();
     double previousScore = latestScore;
     if (histories.length >= 2) {
       previousScore = (histories[histories.length - 2]["final_score"] ?? 0).toDouble();
     }
     final diff = latestScore - previousScore;
-    
+
     String statusLabel = "Stabil";
     String diffText = "";
     Color statusColor = Colors.white;
@@ -244,12 +320,12 @@ Widget _buildSummaryCard() {
     if (diff > 0) {
       statusLabel = "Meningkat";
       diffText = "+${diff.toStringAsFixed(0)}";
-      statusColor = Colors.greenAccent; 
+      statusColor = Colors.greenAccent;
       statusIcon = Icons.trending_up_rounded;
     } else if (diff < 0) {
       statusLabel = "Menurun";
-      diffText = diff.toStringAsFixed(0); 
-      statusColor = const Color(0xFFFF8A8A); 
+      diffText = diff.toStringAsFixed(0);
+      statusColor = const Color(0xFFFF8A8A);
       statusIcon = Icons.trending_down_rounded;
     }
 
@@ -260,6 +336,7 @@ Widget _buildSummaryCard() {
 
     // 4. Main UI Card
     return Container(
+      height: _kChartCardHeight,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
@@ -279,7 +356,7 @@ Widget _buildSummaryCard() {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // HEADER DASHBOARD: Judul + Filter Tab
+          // HEADER: Judul + Filter Tab
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -293,7 +370,6 @@ Widget _buildSummaryCard() {
                   ),
                 ],
               ),
-              // Filter Chips (Interaktif)
               Row(
                 children: [
                   _buildFilterChip("Semua", 0),
@@ -303,9 +379,9 @@ Widget _buildSummaryCard() {
               )
             ],
           ),
-          
+
           const SizedBox(height: 12),
-          
+
           // Status Badge
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -330,32 +406,29 @@ Widget _buildSummaryCard() {
               ],
             ),
           ),
-          
-          const SizedBox(height: 24),
-          
+
+          const SizedBox(height: 18),
+
           // Area Grafik Garis
-          SizedBox(
-            height: 180, 
+          Expanded(
             child: LineChart(
               duration: const Duration(milliseconds: 250),
               curve: Curves.easeOutCubic,
               LineChartData(
-                minX: -0.2, 
-                maxX: (histories.length - 1).toDouble() + 0.2, 
+                minX: -0.2,
+                maxX: (histories.length - 1).toDouble() + 0.2,
                 minY: 0,
-                maxY: 110, // Ditinggikan agar ayunan curve skor 100 aman
-                clipData: const FlClipData.none(), 
-                
-                // INTERAKSI SENTUHAN (Touch Callback)
+                maxY: 110,
+                clipData: const FlClipData.none(),
                 lineTouchData: LineTouchData(
                   handleBuiltInTouches: true,
                   touchCallback: (FlTouchEvent event, LineTouchResponse? touchResponse) {
-                    // Jika pengguna melepas sentuhan, kembalikan ke data terakhir (-1)
-                    if (!event.isInterestedForInteractions || touchResponse == null || touchResponse.lineBarSpots == null) {
+                    if (!event.isInterestedForInteractions ||
+                        touchResponse == null ||
+                        touchResponse.lineBarSpots == null) {
                       controller.selectedChartIndex.value = -1;
                       return;
                     }
-                    // Ambil indeks X dari titik yang sedang ditekan/ditunjuk jari
                     final touchedIndex = touchResponse.lineBarSpots!.first.x.toInt();
                     if (touchedIndex >= 0 && touchedIndex < histories.length) {
                       controller.selectedChartIndex.value = touchedIndex;
@@ -376,7 +449,6 @@ Widget _buildSummaryCard() {
                     },
                   ),
                 ),
-                
                 gridData: FlGridData(
                   show: true,
                   drawVerticalLine: false,
@@ -398,7 +470,7 @@ Widget _buildSummaryCard() {
                       reservedSize: 28,
                       interval: 25,
                       getTitlesWidget: (value, meta) {
-                        if (value > 100) return const SizedBox(); // Sembunyikan angka label 110
+                        if (value > 100) return const SizedBox();
                         return Text(
                           value.toInt().toString(),
                           style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 10),
@@ -409,7 +481,7 @@ Widget _buildSummaryCard() {
                   bottomTitles: AxisTitles(
                     sideTitles: SideTitles(
                       showTitles: true,
-                      interval: xInterval, 
+                      interval: xInterval,
                       reservedSize: 26,
                       getTitlesWidget: (value, meta) {
                         final index = value.toInt();
@@ -432,7 +504,7 @@ Widget _buildSummaryCard() {
                   LineChartBarData(
                     isCurved: true,
                     curveSmoothness: .3,
-                    color: Colors.white, 
+                    color: Colors.white,
                     barWidth: 4,
                     isStrokeCapRound: true,
                     preventCurveOverShooting: true,
@@ -442,7 +514,6 @@ Widget _buildSummaryCard() {
                     dotData: FlDotData(
                       show: true,
                       getDotPainter: (spot, percent, bar, index) {
-                        // Perbesar ukuran titik jika sedang dipilih/disentuh user
                         final isSelected = index == activeIndex && controller.selectedChartIndex.value != -1;
                         return FlDotCirclePainter(
                           radius: isSelected ? 6 : 3.5,
@@ -465,16 +536,16 @@ Widget _buildSummaryCard() {
               ),
             ),
           ),
-          
-          const SizedBox(height: 16),
-          
-          // BOTTOM PANEL: Menampilkan informasi dinamis berdasarkan titik yang disentuh
+
+          const SizedBox(height: 12),
+
+          // BOTTOM PANEL: info dinamis berdasarkan titik yang disentuh
           AnimatedContainer(
             duration: const Duration(milliseconds: 200),
             padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
             decoration: BoxDecoration(
-              color: controller.selectedChartIndex.value != -1 
-                  ? Colors.white.withOpacity(0.12) 
+              color: controller.selectedChartIndex.value != -1
+                  ? Colors.white.withOpacity(0.12)
                   : Colors.transparent,
               borderRadius: BorderRadius.circular(16),
             ),
@@ -518,13 +589,13 @@ Widget _buildSummaryCard() {
   });
 }
 
-// Helper widget untuk membuat tombol filter yang rapi di dalam card
+// Helper tombol filter di dalam card tren mental
 Widget _buildFilterChip(String label, int index) {
   final isSelected = controller.chartFilterIndex.value == index;
   return GestureDetector(
     onTap: () {
       controller.chartFilterIndex.value = index;
-      controller.selectedChartIndex.value = -1; // Reset seleksi saat filter diganti
+      controller.selectedChartIndex.value = -1;
     },
     child: Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -544,6 +615,438 @@ Widget _buildFilterChip(String label, int index) {
   );
 }
 
+// ============================================================
+// CARD 2: Distribusi Emosi (Pie Chart)
+// ============================================================
+Widget _buildMoodChart() {
+  return Obx(() {
+    // ==========================================
+    // 1. STATE: LOADING
+    // ==========================================
+    if (controller.isLoadingMoodChart.value) {
+      return Container(
+        height: _kChartCardHeight,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(24),
+          gradient: const LinearGradient(
+            colors: [Color(0xFF2E66E7), Color(0xFF4B8DFF)],
+          ),
+        ),
+        child: const Center(
+          child: CircularProgressIndicator(color: Colors.white),
+        ),
+      );
+    }
+
+    // ==========================================
+    // 2. STATE: KOSONG (EMPTY STATE)
+    // ==========================================
+    if (controller.journals.isEmpty) {
+      return Container(
+        height: _kChartCardHeight,
+        width: double.infinity,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: const Color(0xFF2E66E7).withOpacity(0.15), width: 1.5),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF2E66E7).withOpacity(0.05),
+              blurRadius: 20,
+              offset: const Offset(0, 10),
+            )
+          ],
+        ),
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            // Ornamen Background Tipis (Buku Harian)
+            Positioned(
+              right: -20,
+              top: -20,
+              child: Icon(Icons.menu_book_rounded, size: 120, color: Colors.grey.withOpacity(0.04)),
+            ),
+            Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF2E66E7).withOpacity(0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.edit_note_rounded, size: 42, color: Color(0xFF2E66E7)),
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  "Belum Ada Data Jurnal",
+                  style: TextStyle(color: Colors.black87, fontWeight: FontWeight.w800, fontSize: 17),
+                ),
+                const SizedBox(height: 8),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 32),
+                  child: Text(
+                    "Grafik mood akan muncul di sini setelah kamu mulai menulis jurnal harian.",
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Colors.grey.shade500, fontSize: 13, height: 1.4),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                
+                // TOMBOL MENUJU HALAMAN JURNAL (Empty State)
+                ElevatedButton.icon(
+                  onPressed: () {
+                    // TODO: Ubah navigasi ini sesuai nama halaman Jurnal Anda
+                    // Contoh: Get.to(() => JournalPage()); 
+                    // atau Get.toNamed('/journal');
+                  },
+                  icon: const Icon(Icons.add_circle_outline, size: 18),
+                  label: const Text("Tulis Jurnal Sekarang"),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF2E66E7),
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                  ),
+                )
+              ],
+            ),
+          ],
+        ),
+      );
+    }
+
+    // ==========================================
+    // 3. STATE: ADA DATA (PREMIUM UI TANPA BLUR)
+    // ==========================================
+    final Map<String, int> moodCount = {
+      "😊": 0,
+      "😌": 0,
+      "😔": 0,
+      "😢": 0,
+      "😡": 0,
+    };
+
+    for (final item in controller.journals) {
+      final mood = item["mood"];
+      if (moodCount.containsKey(mood)) {
+        moodCount[mood] = moodCount[mood]! + 1;
+      }
+    }
+
+    final total = moodCount.values.fold(0, (a, b) => a + b);
+
+    // Palet Warna UI Modern
+    final moodConfigs = [
+      {"emoji": "😊", "name": "Bahagia", "color": const Color(0xFF34D399)},
+      {"emoji": "😌", "name": "Tenang",  "color": const Color(0xFF60A5FA)},
+      {"emoji": "😔", "name": "Sedih",   "color": const Color(0xFFFBBF24)},
+      {"emoji": "😢", "name": "Kecewa",  "color": const Color(0xFFA78BFA)},
+      {"emoji": "😡", "name": "Marah",   "color": const Color(0xFFFB7185)},
+    ];
+
+    final selectedIdx = controller.selectedPieIndex.value;
+    String centerText = "";
+    String centerSubText = "";
+    
+    if (selectedIdx >= 0 && selectedIdx < moodConfigs.length) {
+      final value = moodCount[moodConfigs[selectedIdx]["emoji"]]!;
+      final percent = total == 0 ? 0 : (value / total * 100);
+      centerText = "${percent.toStringAsFixed(0)}%";
+      centerSubText = moodConfigs[selectedIdx]["name"] as String;
+    } else {
+      centerText = "$total";
+      centerSubText = "Catatan"; 
+    }
+
+    return Container(
+      constraints: BoxConstraints(minHeight: _kChartCardHeight),
+      decoration: BoxDecoration(
+        // Gradien Premium (Tanpa Blur)
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF163CB3), Color(0xFF3B7CFF)], 
+        ),
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF2E66E7).withOpacity(0.35),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          )
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // --- HEADER DENGAN TOMBOL NAVIGASI ---
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center, // Ubah ke center agar tombol sejajar
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.white.withOpacity(0.2)),
+                  ),
+                  child: const Icon(Icons.auto_stories_rounded, color: Colors.white, size: 20),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        "Mood Harian",
+                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        "Berdasarkan $total catatan terakhirmu",
+                        style: TextStyle(color: Colors.white.withOpacity(0.75), fontSize: 12),
+                      ),
+                    ],
+                  ),
+                ),
+                // TOMBOL MENUJU HALAMAN JURNAL (Data State)
+                Material(
+                  color: Colors.white.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(20),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(20),
+                    onTap: () {
+                      HapticFeedback.lightImpact();
+                      // TODO: Ubah navigasi ini sesuai nama halaman Jurnal Anda
+                      // Contoh: Get.to(() => JournalPage()); 
+                      Get.toNamed('/journal');
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Text(
+                            "Tulis Jurnal",
+                            style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                          ),
+                          const SizedBox(width: 4),
+                          Icon(Icons.arrow_forward_ios_rounded, color: Colors.white.withOpacity(0.8), size: 10),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            
+            const SizedBox(height: 24),
+
+            // --- CHART & LEGEND ---
+            Expanded(
+              child: Row(
+                children: [
+                  // === KIRI: PIE CHART ===
+                  Expanded(
+                    flex: 11,
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        // Teks Dinamis di Tengah
+                        AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 300),
+                          transitionBuilder: (Widget child, Animation<double> animation) {
+                            return FadeTransition(opacity: animation, child: ScaleTransition(scale: animation, child: child));
+                          },
+                          child: Column(
+                            key: ValueKey<String>(centerText),
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                centerText,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w900,
+                                  fontSize: 22,
+                                ),
+                              ),
+                              Text(
+                                centerSubText,
+                                style: TextStyle(
+                                  color: Colors.white.withOpacity(0.85),
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w600,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        
+                        // Chart
+                        PieChart(
+                          PieChartData(
+                            pieTouchData: PieTouchData(
+                              touchCallback: (event, response) {
+                                if (event is FlTapUpEvent) {
+                                  HapticFeedback.lightImpact();
+                                  if (response == null || response.touchedSection == null) {
+                                    controller.selectedPieIndex.value = -1;
+                                    return;
+                                  }
+                                  final tappedIndex = response.touchedSection!.touchedSectionIndex;
+                                  controller.selectedPieIndex.value = controller.selectedPieIndex.value == tappedIndex ? -1 : tappedIndex;
+                                }
+                              },
+                            ),
+                            centerSpaceRadius: 40, 
+                            sectionsSpace: 4, 
+                            sections: List.generate(5, (i) {
+                              final config = moodConfigs[i];
+                              final emoji = config["emoji"] as String;
+                              final value = moodCount[emoji]!.toDouble();
+                              final selected = controller.selectedPieIndex.value == i;
+
+                              return PieChartSectionData(
+                                color: config["color"] as Color,
+                                value: value,
+                                radius: selected ? 58 : 46,
+                                title: "", 
+                                borderSide: BorderSide(
+                                  color: Colors.white.withOpacity(selected ? 0.9 : 0.0), 
+                                  width: selected ? 4 : 0,
+                                ),
+                                badgeWidget: value > 0 
+                                  ? AnimatedContainer(
+                                      duration: const Duration(milliseconds: 300),
+                                      curve: Curves.easeOutBack,
+                                      padding: const EdgeInsets.all(5.0),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white,
+                                        shape: BoxShape.circle,
+                                        boxShadow: [
+                                          BoxShadow(color: Colors.black.withOpacity(0.15), blurRadius: 8, offset: const Offset(0, 4))
+                                        ],
+                                      ),
+                                      child: Text(emoji, style: TextStyle(fontSize: selected ? 18 : 14)),
+                                    ) 
+                                  : const SizedBox.shrink(),
+                                badgePositionPercentageOffset: selected ? 1.05 : 0.95, 
+                              );
+                            }),
+                          ),
+                          swapAnimationDuration: const Duration(milliseconds: 500),
+                          swapAnimationCurve: Curves.easeOutBack,
+                        ),
+                      ],
+                    ),
+                  ),
+                  
+                  const SizedBox(width: 16),
+                  
+                  // === KANAN: LEGEND ===
+                  Expanded(
+                    flex: 10,
+                    child: SingleChildScrollView( 
+                      physics: const BouncingScrollPhysics(),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: List.generate(5, (i) {
+                          final config = moodConfigs[i];
+                          final name = config["name"] as String;
+                          final color = config["color"] as Color;
+                          final value = moodCount[config["emoji"]]!;
+                          final percent = total == 0 ? 0 : (value / total * 100);
+                          
+                          final selected = controller.selectedPieIndex.value == i;
+                          
+                          return AnimatedContainer(
+                            duration: const Duration(milliseconds: 250),
+                            margin: const EdgeInsets.only(bottom: 8),
+                            decoration: BoxDecoration(
+                              color: selected ? Colors.white.withOpacity(0.2) : Colors.white.withOpacity(0.05),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: selected ? Colors.white.withOpacity(0.5) : Colors.transparent,
+                                width: 1,
+                              ),
+                            ),
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(16),
+                              onTap: () {
+                                HapticFeedback.selectionClick();
+                                controller.selectedPieIndex.value = selected ? -1 : i;
+                              },
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      width: 12,
+                                      height: 12,
+                                      decoration: BoxDecoration(
+                                        color: color,
+                                        shape: BoxShape.circle,
+                                        boxShadow: selected ? [
+                                          BoxShadow(color: color, blurRadius: 6, spreadRadius: 1)
+                                        ] : [],
+                                      ),
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            name,
+                                            style: TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 12,
+                                              fontWeight: selected ? FontWeight.bold : FontWeight.w500,
+                                            ),
+                                          ),
+                                          if (selected && value > 0) ...[
+                                            const SizedBox(height: 2),
+                                            Text(
+                                              "${percent.toStringAsFixed(1)}% dari total",
+                                              style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 9),
+                                            )
+                                          ]
+                                        ],
+                                      ),
+                                    ),
+                                    Text(
+                                      "$value",
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: selected ? FontWeight.w900 : FontWeight.bold,
+                                        fontSize: selected ? 15 : 13,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          );
+                        }),
+                      ),
+                    ),
+                  )
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  });
+}
 // Widget _trendTile(
 
 //   String title,

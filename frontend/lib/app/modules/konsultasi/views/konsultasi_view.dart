@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../controllers/konsultasi_controller.dart';
@@ -103,78 +104,115 @@ class KonsultasiView extends GetView<KonsultasiController> {
     return Obx(() {
       final started = controller.chatMessages.isNotEmpty ||
           controller.voiceStatus.value != VoiceStatus.idle;
-      if (!started) return _buildVoiceIntro();
-      return _buildVoiceSession();
+      return AnimatedSwitcher(
+        duration: const Duration(milliseconds: 350),
+        switchInCurve: Curves.easeOut,
+        switchOutCurve: Curves.easeIn,
+        transitionBuilder: (child, anim) => FadeTransition(
+          opacity: anim,
+          child: SlideTransition(
+            position: Tween<Offset>(
+                    begin: const Offset(0, 0.03), end: Offset.zero)
+                .animate(anim),
+            child: child,
+          ),
+        ),
+        child: started
+            ? _buildVoiceSession(key: const ValueKey('session'))
+            : _buildVoiceIntro(key: const ValueKey('intro')),
+      );
     });
   }
 
   // ── Halaman pembuka sebelum sesi dimulai ────────────
-  Widget _buildVoiceIntro() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 32),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 90,
-              height: 90,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: LinearGradient(
-                  colors: [const Color(0xFF2E66E7), const Color(0xFF7C4DFF)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                      color: const Color(0xFF2E66E7).withOpacity(0.35),
-                      blurRadius: 20,
-                      spreadRadius: 4)
-                ],
-              ),
-              child: const Icon(Icons.psychology_alt, color: Colors.white, size: 44),
-            ),
-            const SizedBox(height: 24),
-            Text('Asisten Suara MindTrack',
-                style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: Get.theme.textTheme.bodyLarge?.color)),
-            const SizedBox(height: 10),
-            const Text(
-              'Jawab pertanyaan dengan berbicara santai — '
-              'tidak perlu menekan tombol kirim. '
-              'AI kami akan langsung mendengar dan merespons.',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.grey, fontSize: 13, height: 1.5),
-            ),
-            const SizedBox(height: 12),
-            // Fitur kilat
-            _featureRow(Icons.mic_none, 'Bicara bebas, otomatis terkirim'),
-            _featureRow(Icons.chat_bubble_outline, 'Percakapan natural & mengalir'),
-            _featureRow(Icons.speed, 'Ditenagai Groq (respons cepat)'),
-            const SizedBox(height: 32),
-            SizedBox(
-              width: double.infinity,
-              height: 52,
-              child: ElevatedButton.icon(
-                onPressed: controller.startVoiceSession,
-                icon: const Icon(Icons.play_arrow_rounded, color: Colors.white),
-                label: const Text('Mulai Sesi Suara',
-                    style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold)),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF2E66E7),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(26)),
-                  elevation: 4,
-                ),
-              ),
-            ),
+  Widget _buildVoiceIntro({Key? key}) {
+    return Container(
+      key: key,
+      width: double.infinity,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            const Color(0xFF2E66E7).withOpacity(0.06),
+            Colors.transparent,
           ],
+        ),
+      ),
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 32),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const _BreathingOrb(
+                size: 110,
+                icon: Icons.psychology_alt,
+                colors: [Color(0xFF2E66E7), Color(0xFF7C4DFF)],
+              ),
+              const SizedBox(height: 28),
+              ShaderMask(
+                shaderCallback: (bounds) => const LinearGradient(
+                  colors: [Color(0xFF2E66E7), Color(0xFF7C4DFF)],
+                ).createShader(bounds),
+                child: const Text('Asisten Suara MindTrack',
+                    style: TextStyle(
+                        fontSize: 21,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white)),
+              ),
+              const SizedBox(height: 10),
+              const Text(
+                'Jawab pertanyaan dengan berbicara santai — '
+                'tidak perlu menekan tombol kirim. '
+                'AI kami akan langsung mendengar dan merespons.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.grey, fontSize: 13, height: 1.5),
+              ),
+              const SizedBox(height: 16),
+              _featureRow(Icons.mic_none, 'Bicara bebas, otomatis terkirim'),
+              _featureRow(Icons.chat_bubble_outline, 'Percakapan natural & mengalir'),
+              _featureRow(Icons.speed, 'Ditenagai Groq (respons cepat)'),
+              const SizedBox(height: 32),
+              SizedBox(
+                width: double.infinity,
+                height: 54,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(27),
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF2E66E7), Color(0xFF7C4DFF)],
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                          color: const Color(0xFF2E66E7).withOpacity(0.4),
+                          blurRadius: 18,
+                          offset: const Offset(0, 8)),
+                    ],
+                  ),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(27),
+                      onTap: controller.startVoiceSession,
+                      child: const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.play_arrow_rounded, color: Colors.white),
+                          SizedBox(width: 6),
+                          Text('Mulai Sesi Suara',
+                              style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold)),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -195,8 +233,9 @@ class KonsultasiView extends GetView<KonsultasiController> {
   }
 
   // ── Sesi aktif (chat bubbles + mic) ─────────────────
-  Widget _buildVoiceSession() {
+  Widget _buildVoiceSession({Key? key}) {
     return Column(
+      key: key,
       children: [
         // Progress bar di atas
         _buildProgressBar(),
@@ -208,7 +247,8 @@ class KonsultasiView extends GetView<KonsultasiController> {
             return ListView.builder(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
               itemCount: msgs.length,
-              itemBuilder: (_, i) => _buildBubble(msgs[i]),
+              itemBuilder: (_, i) =>
+                  _AnimatedBubble(child: _buildBubble(msgs[i])),
             );
           }),
         ),
@@ -216,31 +256,36 @@ class KonsultasiView extends GetView<KonsultasiController> {
         // Live transcript (teks sementara saat user bicara)
         Obx(() {
           final live = controller.liveTranscript.value;
-          if (live.isEmpty && controller.voiceStatus.value != VoiceStatus.listening) {
+          final listening = controller.voiceStatus.value == VoiceStatus.listening;
+          if (live.isEmpty && !listening) {
             return const SizedBox.shrink();
           }
-          return Container(
-            margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            decoration: BoxDecoration(
-              color: Colors.green.withOpacity(0.08),
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: Colors.green.withOpacity(0.3)),
-            ),
-            child: Row(
-              children: [
-                const Icon(Icons.graphic_eq, color: Colors.green, size: 18),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    live.isEmpty ? 'Mendengarkan Anda...' : live,
-                    style: const TextStyle(
-                        color: Colors.green,
-                        fontStyle: FontStyle.italic,
-                        fontSize: 13),
+          return AnimatedOpacity(
+            duration: const Duration(milliseconds: 200),
+            opacity: 1,
+            child: Container(
+              margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: Colors.green.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: Colors.green.withOpacity(0.3)),
+              ),
+              child: Row(
+                children: [
+                  const _MiniWaveform(color: Colors.green),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      live.isEmpty ? 'Mendengarkan Anda...' : live,
+                      style: const TextStyle(
+                          color: Colors.green,
+                          fontStyle: FontStyle.italic,
+                          fontSize: 13),
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           );
         }),
@@ -285,9 +330,15 @@ class KonsultasiView extends GetView<KonsultasiController> {
         mainAxisAlignment: isAi ? MainAxisAlignment.start : MainAxisAlignment.end,
         children: [
           if (isAi) ...[
-            CircleAvatar(
-              radius: 16,
-              backgroundColor: const Color(0xFF2E66E7),
+            Container(
+              width: 32,
+              height: 32,
+              decoration: const BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: LinearGradient(
+                  colors: [Color(0xFF2E66E7), Color(0xFF7C4DFF)],
+                ),
+              ),
               child: const Icon(Icons.psychology, color: Colors.white, size: 16),
             ),
             const SizedBox(width: 8),
@@ -298,13 +349,26 @@ class KonsultasiView extends GetView<KonsultasiController> {
               decoration: BoxDecoration(
                 color: isAi
                     ? (Get.isDarkMode ? Colors.grey.shade800 : Colors.blue.shade50)
-                    : const Color(0xFF2E66E7),
+                    : null,
+                gradient: isAi
+                    ? null
+                    : const LinearGradient(
+                        colors: [Color(0xFF2E66E7), Color(0xFF3F7BF0)],
+                      ),
                 borderRadius: BorderRadius.only(
                   topLeft: const Radius.circular(18),
                   topRight: const Radius.circular(18),
                   bottomLeft: Radius.circular(isAi ? 4 : 18),
                   bottomRight: Radius.circular(isAi ? 18 : 4),
                 ),
+                boxShadow: isAi
+                    ? []
+                    : [
+                        BoxShadow(
+                            color: const Color(0xFF2E66E7).withOpacity(0.25),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4)),
+                      ],
               ),
               child: Text(
                 msg.text,
@@ -332,64 +396,62 @@ class KonsultasiView extends GetView<KonsultasiController> {
       IconData micIcon;
       String label;
       bool micEnabled;
+      bool pulse;
 
       switch (status) {
         case VoiceStatus.listening:
-          micColor   = Colors.red;
+          micColor   = const Color(0xFFE53935);
           micIcon    = Icons.stop_rounded;
           label      = 'Ketuk untuk selesai lebih awal';
           micEnabled = true;
+          pulse      = true;
           break;
         case VoiceStatus.thinking:
-          micColor   = Colors.orange;
+          micColor   = const Color(0xFFFF9800);
           micIcon    = Icons.hourglass_top_rounded;
           label      = 'Memahami jawaban Anda...';
           micEnabled = false;
+          pulse      = false;
           break;
         case VoiceStatus.speaking:
           micColor   = const Color(0xFF7C4DFF);
           micIcon    = Icons.volume_up_rounded;
           label      = 'Asisten sedang berbicara...';
           micEnabled = false;
+          pulse      = true;
           break;
         default:
           micColor   = const Color(0xFF2E66E7);
           micIcon    = Icons.mic_rounded;
           label      = 'Ketuk mic untuk berbicara';
           micEnabled = true;
+          pulse      = false;
       }
 
       return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 6),
+        padding: const EdgeInsets.symmetric(vertical: 10),
         child: Column(
           children: [
-            GestureDetector(
-              onTap: micEnabled ? controller.tapMic : null,
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 300),
-                curve: Curves.easeInOut,
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: micColor,
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: micColor.withOpacity(status == VoiceStatus.listening ? 0.5 : 0.3),
-                      blurRadius: status == VoiceStatus.listening ? 28 : 14,
-                      spreadRadius: status == VoiceStatus.listening ? 6 : 0,
-                    ),
-                  ],
-                ),
-                child: Icon(micIcon, color: Colors.white, size: 34),
-              ),
+            if (status == VoiceStatus.listening) ...[
+              const _EqualizerBars(color: Color(0xFFE53935)),
+              const SizedBox(height: 14),
+            ],
+            _PulsingMicButton(
+              color: micColor,
+              icon: micIcon,
+              enabled: micEnabled,
+              pulse: pulse,
+              thinking: status == VoiceStatus.thinking,
+              onTap: controller.tapMic,
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 10),
             AnimatedSwitcher(
               duration: const Duration(milliseconds: 200),
               child: Text(
                 label,
                 key: ValueKey(label),
-                style: const TextStyle(color: Colors.grey, fontSize: 12),
+                style: const TextStyle(
+                    color: Colors.grey, fontSize: 12, fontWeight: FontWeight.w500),
               ),
             ),
           ],
@@ -471,11 +533,16 @@ class KonsultasiView extends GetView<KonsultasiController> {
             const SizedBox(height: 8),
             ClipRRect(
               borderRadius: BorderRadius.circular(10),
-              child: LinearProgressIndicator(
-                value: controller.progress.clamp(0.0, 1.0),
-                minHeight: 8,
-                backgroundColor: Colors.grey.shade200,
-                valueColor: AlwaysStoppedAnimation(color),
+              child: TweenAnimationBuilder<double>(
+                tween: Tween(begin: 0, end: controller.progress.clamp(0.0, 1.0)),
+                duration: const Duration(milliseconds: 350),
+                curve: Curves.easeOut,
+                builder: (context, value, _) => LinearProgressIndicator(
+                  value: value,
+                  minHeight: 8,
+                  backgroundColor: Colors.grey.shade200,
+                  valueColor: AlwaysStoppedAnimation(color),
+                ),
               ),
             ),
           ],
@@ -797,6 +864,335 @@ class KonsultasiView extends GetView<KonsultasiController> {
         child: Text(label,
             style: const TextStyle(
                 color: Colors.white, fontWeight: FontWeight.bold)),
+      ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════
+//  ANIMATED HELPER WIDGETS (baru — khusus mode Voice)
+// ═══════════════════════════════════════════════════
+
+/// Ikon lingkaran yang "bernapas" pelan di halaman intro voice.
+class _BreathingOrb extends StatefulWidget {
+  final double size;
+  final IconData icon;
+  final List<Color> colors;
+
+  const _BreathingOrb({
+    required this.size,
+    required this.icon,
+    required this.colors,
+  });
+
+  @override
+  State<_BreathingOrb> createState() => _BreathingOrbState();
+}
+
+class _BreathingOrbState extends State<_BreathingOrb>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 2200),
+  )..repeat(reverse: true);
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _ctrl,
+      builder: (context, child) {
+        final scale = 1.0 + (_ctrl.value * 0.08);
+        final glow = 0.25 + (_ctrl.value * 0.25);
+        return Stack(
+          alignment: Alignment.center,
+          children: [
+            // ring luar yang mengembang
+            Container(
+              width: widget.size * (1.5 + _ctrl.value * 0.3),
+              height: widget.size * (1.5 + _ctrl.value * 0.3),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: widget.colors.first.withOpacity(0.15 * (1 - _ctrl.value)),
+                  width: 1.5,
+                ),
+              ),
+            ),
+            Transform.scale(
+              scale: scale,
+              child: Container(
+                width: widget.size,
+                height: widget.size,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: LinearGradient(
+                    colors: widget.colors,
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: widget.colors.first.withOpacity(glow),
+                      blurRadius: 26,
+                      spreadRadius: 6,
+                    ),
+                  ],
+                ),
+                child: Icon(widget.icon, color: Colors.white, size: widget.size * 0.48),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+/// Tombol mic besar dengan ring berdenyut saat status listening/speaking,
+/// dan indikator berputar saat sedang "thinking".
+class _PulsingMicButton extends StatefulWidget {
+  final Color color;
+  final IconData icon;
+  final bool enabled;
+  final bool pulse;
+  final bool thinking;
+  final VoidCallback onTap;
+
+  const _PulsingMicButton({
+    required this.color,
+    required this.icon,
+    required this.enabled,
+    required this.pulse,
+    required this.thinking,
+    required this.onTap,
+  });
+
+  @override
+  State<_PulsingMicButton> createState() => _PulsingMicButtonState();
+}
+
+class _PulsingMicButtonState extends State<_PulsingMicButton>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1400),
+  )..repeat();
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: widget.enabled ? widget.onTap : null,
+      child: AnimatedBuilder(
+        animation: _ctrl,
+        builder: (context, _) {
+          final t = _ctrl.value;
+          return SizedBox(
+            width: 130,
+            height: 130,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                if (widget.pulse)
+                  for (final delay in [0.0, 0.5])
+                    Builder(builder: (_) {
+                      final localT = (t + delay) % 1.0;
+                      return Opacity(
+                        opacity: (1 - localT) * 0.5,
+                        child: Container(
+                          width: 76 + localT * 54,
+                          height: 76 + localT * 54,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(color: widget.color, width: 2),
+                          ),
+                        ),
+                      );
+                    }),
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.easeInOut,
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [widget.color, widget.color.withOpacity(0.75)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: widget.color.withOpacity(widget.pulse ? 0.45 : 0.28),
+                        blurRadius: widget.pulse ? 26 : 14,
+                        spreadRadius: widget.pulse ? 4 : 0,
+                      ),
+                    ],
+                  ),
+                  child: widget.thinking
+                      ? RotationTransition(
+                          turns: _ctrl,
+                          child: const Icon(Icons.autorenew_rounded,
+                              color: Colors.white, size: 34),
+                        )
+                      : Icon(widget.icon, color: Colors.white, size: 34),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+/// Bar equalizer kecil yang naik-turun saat sedang mendengarkan.
+class _EqualizerBars extends StatefulWidget {
+  final Color color;
+  const _EqualizerBars({required this.color});
+
+  @override
+  State<_EqualizerBars> createState() => _EqualizerBarsState();
+}
+
+class _EqualizerBarsState extends State<_EqualizerBars>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 900),
+  )..repeat();
+  final _rand = Random();
+  late final List<double> _phases =
+      List.generate(5, (_) => _rand.nextDouble() * pi * 2);
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _ctrl,
+      builder: (context, _) {
+        final t = _ctrl.value * pi * 2;
+        return SizedBox(
+          height: 34,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: List.generate(5, (i) {
+              final h = 8 + (sin(t + _phases[i]).abs() * 26);
+              return Container(
+                width: 5,
+                height: h,
+                margin: const EdgeInsets.symmetric(horizontal: 3),
+                decoration: BoxDecoration(
+                  color: widget.color,
+                  borderRadius: BorderRadius.circular(3),
+                ),
+              );
+            }),
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// Waveform mini untuk ditampilkan di sebelah teks transkrip live.
+class _MiniWaveform extends StatefulWidget {
+  final Color color;
+  const _MiniWaveform({required this.color});
+
+  @override
+  State<_MiniWaveform> createState() => _MiniWaveformState();
+}
+
+class _MiniWaveformState extends State<_MiniWaveform>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 800),
+  )..repeat();
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _ctrl,
+      builder: (context, _) {
+        final t = _ctrl.value * pi * 2;
+        return SizedBox(
+          width: 26,
+          height: 18,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: List.generate(3, (i) {
+              final h = 6 + (sin(t + i * 1.4).abs() * 12);
+              return Container(
+                width: 3,
+                height: h,
+                margin: const EdgeInsets.symmetric(horizontal: 1.5),
+                decoration: BoxDecoration(
+                  color: widget.color,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              );
+            }),
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// Bungkus setiap chat bubble agar muncul dengan animasi fade + slide.
+class _AnimatedBubble extends StatefulWidget {
+  final Widget child;
+  const _AnimatedBubble({required this.child});
+
+  @override
+  State<_AnimatedBubble> createState() => _AnimatedBubbleState();
+}
+
+class _AnimatedBubbleState extends State<_AnimatedBubble>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 320),
+  )..forward();
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final curved = CurvedAnimation(parent: _ctrl, curve: Curves.easeOutCubic);
+    return FadeTransition(
+      opacity: curved,
+      child: SlideTransition(
+        position: Tween<Offset>(begin: const Offset(0, 0.12), end: Offset.zero)
+            .animate(curved),
+        child: widget.child,
       ),
     );
   }

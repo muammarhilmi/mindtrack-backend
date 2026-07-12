@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:hive/hive.dart';
 import 'journal_list_view.dart';
+import 'package:capstone/app/data/models/journal_model.dart';
+import 'package:capstone/app/data/services/journal_service.dart';
+import 'package:get/get.dart';
+import 'package:capstone/app/core/controllers/global_auth_controller.dart';
+import 'package:capstone/app/modules/beranda/controllers/beranda_controller.dart'; // ⬅️ sesuaikan path sesuai struktur foldermu
 
 class JournalView extends StatefulWidget {
   const JournalView({super.key});
@@ -10,8 +14,15 @@ class JournalView extends StatefulWidget {
 }
 
 class _JournalViewState extends State<JournalView> {
+  final JournalService journalService = JournalService();
+
+  final GlobalAuthController authController =
+      Get.find<GlobalAuthController>();
+
+  bool isSaving = false;
+
   final TextEditingController controller = TextEditingController();
-  late Box box;
+
   String selectedMood = "😊";
 
   final moods = ["😊", "😌", "😔", "😢", "😡"];
@@ -27,46 +38,72 @@ class _JournalViewState extends State<JournalView> {
   @override
   void initState() {
     super.initState();
-    box = Hive.box('journals');
     guideText = guideTexts.first;
   }
 
-  void saveJournal() {
-    final text = controller.text.trim();
+  Future<void> saveJournal() async {
+  final text = controller.text.trim();
 
-    if (text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text("Jurnal tidak boleh kosong"),
-          behavior: SnackBarBehavior.floating,
-          backgroundColor: Colors.redAccent.withOpacity(0.9),
-          margin: const EdgeInsets.all(16),
-        ),
-      );
-      return;
+  if (text.isEmpty) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text("Jurnal tidak boleh kosong"),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+    return;
+  }
+
+  final user = authController.currentUser.value;
+
+  if (user == null) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text("Silakan login terlebih dahulu"),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+    return;
+  }
+
+  setState(() {
+    isSaving = true;
+  });
+
+  try {
+    final journal = JournalModel(
+      userId: user.id,
+      title:
+          "Jurnal ${DateTime.now().day}/${DateTime.now().month}/${DateTime.now().year}",
+      content: text,
+      mood: selectedMood,
+      createdAt: DateTime.now(),
+    );
+
+    await journalService.createJournal(journal);
+    if (Get.isRegistered<BerandaController>()) {
+      Get.find<BerandaController>().fetchJournals();
     }
 
-    final data = {
-      "title": "Jurnal ${DateTime.now().day}/${DateTime.now().month}",
-      "content": text,
-      "mood": selectedMood,
-      "date": DateTime.now().toIso8601String(),
-    };
-
-    box.add(data);
     controller.clear();
 
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text("✨ Jurnal berhasil disimpan"),
-        behavior: SnackBarBehavior.floating,
-        margin: EdgeInsets.all(16),
-        duration: Duration(seconds: 2),
       ),
     );
-
-    setState(() {});
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(e.toString()),
+      ),
+    );
+  } finally {
+    setState(() {
+      isSaving = false;
+    });
   }
+}
 
   void openList() {
     Navigator.push(
@@ -285,7 +322,7 @@ class _JournalViewState extends State<JournalView> {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: saveJournal,
+                onPressed: isSaving ? null : saveJournal,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: primaryBlue,
                   foregroundColor: Colors.white,
@@ -296,21 +333,29 @@ class _JournalViewState extends State<JournalView> {
                   elevation: 2,
                   shadowColor: primaryBlue.withOpacity(0.3),
                 ),
-                child: const Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.check_circle_outline_rounded, size: 20),
-                    SizedBox(width: 8),
-                    Text(
-                      "Simpan Jurnal",
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 0.3,
+                child: isSaving
+                  ? const SizedBox(
+                      height: 22,
+                      width: 22,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
                       ),
+                    )
+                  : const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.check_circle_outline_rounded),
+                        SizedBox(width: 8),
+                        Text(
+                          "Simpan Jurnal",
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
               ),
             ),
           ],
