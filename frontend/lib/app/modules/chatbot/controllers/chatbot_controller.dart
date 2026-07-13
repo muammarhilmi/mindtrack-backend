@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import '../../../core/constants/api_constants.dart';
+import '../../../core/config/network_config.dart';
 import '../../../core/controllers/global_auth_controller.dart';
 
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -76,7 +76,7 @@ class ChatbotController extends GetxController {
       }).toList();
 
       final response = await http.post(
-        Uri.parse('${ApiConstants.baseUrl}/chatbot/'),
+        Uri.parse('${NetworkConfig.baseUrl}/chatbot/'),
         headers: {
           'Content-Type': 'application/json',
           'ngrok-skip-browser-warning': 'true',
