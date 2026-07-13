@@ -3,6 +3,7 @@ import os
 import tempfile
 import time
 from datetime import datetime, timezone
+import numpy as np
 
 from bson import ObjectId
 from deepface import DeepFace
@@ -13,9 +14,15 @@ from app.db.mongodb import db
 
 users_collection = db["users"]
 
-FACE_THRESHOLD = 0.30
-MODEL_NAME = "Facenet512"
+FACE_THRESHOLD = 0.40
+MODEL_NAME = "Facenet"
 DETECTOR = "opencv"
+
+
+def cosine_distance(source_representation, test_representation):
+    a = np.array(source_representation)
+    b = np.array(test_representation)
+    return 1 - np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b))
 
 
 def _decode_base64_to_file(image_base64: str) -> str:
@@ -50,15 +57,17 @@ def register_face(user_id: str, image_base64: str) -> dict:
         )
 
     temp_path = None
+    embedding = None
     try:
         temp_path = _decode_base64_to_file(image_base64)
 
-        DeepFace.represent(
+        result = DeepFace.represent(
             img_path=temp_path,
             model_name=MODEL_NAME,
             detector_backend=DETECTOR,
             enforce_detection=True,
         )
+        embedding = result[0]["embedding"]
     except ValueError as e:
         if "Face could not be detected" in str(e):
             raise HTTPException(
@@ -86,6 +95,7 @@ def register_face(user_id: str, image_base64: str) -> dict:
         {
             "$set": {
                 "face_image": image_base64,
+                "embedding": embedding,
                 "face_updated_at": datetime.now(timezone.utc),
             }
         },
@@ -96,15 +106,17 @@ def register_face(user_id: str, image_base64: str) -> dict:
 
 def verify_face(image_base64: str) -> dict:
     input_path = None
+    input_embedding = None
     try:
         input_path = _decode_base64_to_file(image_base64)
 
-        DeepFace.represent(
+        result = DeepFace.represent(
             img_path=input_path,
             model_name=MODEL_NAME,
             detector_backend=DETECTOR,
             enforce_detection=True,
         )
+        input_embedding = result[0]["embedding"]
     except ValueError as e:
         if "Face could not be detected" in str(e):
             raise HTTPException(
@@ -120,16 +132,17 @@ def verify_face(image_base64: str) -> dict:
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(e),
         )
+    finally:
+        if input_path and os.path.exists(input_path):
+            os.remove(input_path)
 
     users_with_faces = list(
         users_collection.find(
-            {"face_image": {"$exists": True, "$ne": None, "$ne": ""}}
+            {"embedding": {"$exists": True, "$ne": None, "$ne": []}}
         )
     )
 
     if not users_with_faces:
-        if input_path and os.path.exists(input_path):
-            os.remove(input_path)
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Belum ada wajah terdaftar di database",
@@ -139,31 +152,17 @@ def verify_face(image_base64: str) -> dict:
     best_distance = 999.0
 
     for user in users_with_faces:
-        db_path = None
+        db_embedding = user.get("embedding")
+        if not db_embedding:
+            continue
+            
         try:
-            db_path = _decode_base64_to_file(user["face_image"])
-
-            result = DeepFace.verify(
-                img1_path=input_path,
-                img2_path=db_path,
-                model_name=MODEL_NAME,
-                detector_backend=DETECTOR,
-                enforce_detection=False,
-            )
-
-            distance = result["distance"]
+            distance = cosine_distance(db_embedding, input_embedding)
             if distance < best_distance:
                 best_distance = distance
                 best_match = user
-
         except Exception:
             continue
-        finally:
-            if db_path and os.path.exists(db_path):
-                os.remove(db_path)
-
-    if input_path and os.path.exists(input_path):
-        os.remove(input_path)
 
     if best_match and best_distance < FACE_THRESHOLD:
         token = create_access_token(best_match["email"])
@@ -179,5 +178,5 @@ def verify_face(image_base64: str) -> dict:
 
     raise HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Wajah belum terdaftar",
+        detail="Wajah tidak terdaftar atau tidak cocok",
     )
